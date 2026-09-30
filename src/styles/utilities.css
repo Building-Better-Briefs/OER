@@ -1,0 +1,51 @@
+body:has(.grade-page) .site-footer {
+    display: none;
+}
+
+.dotted-background {
+  /* Match Tailwind bg-muted/40 (builder-right-panel scroll area) */
+  /* background-color: color-mix(in oklch, var(--muted) 100%, transparent); */
+  background-color: var(--muted);
+  /* background-image: radial-gradient(
+    color-mix(in oklch, white 10%, var(--muted) 90%) 0.5px,
+    transparent 0
+  ); */
+  background-image: radial-gradient(var(--muted-foreground) 0.5px, transparent 
+  0);
+  background-size: 25px 25px;
+  background-position: 5px 5px;
+  background-repeat: repeat;
+}
+.add-button {
+  @apply font-light h-7 text-xs bg-success hover:bg-success/90 text-white hover:text-white;
+}
+
+.remove-button {
+  @apply font-light h-7 text-xs bg-danger hover:bg-danger/90 text-white hover:text-white;
+}
+
+.remove-button-outline {
+  @apply font-light h-7 text-xs border-2 border-danger text-danger hover:bg-danger hover:text-white;
+}
+@layer utilities {
+  /* Inter "zero" feature — must include liga/calt so body inheritance does not win */
+  .slashed-zero-nums {
+    font-feature-settings: 'liga' 1, 'calt' 1, 'zero' 1;
+    font-variant-numeric: slashed-zero tabular-nums;
+  }
+}
+@keyframes scroll-hint-x {
+  0%,
+  100% {
+    transform: translateX(-3px);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+
+.scroll-hint-x {
+  animation: scroll-hint-x 1.6s ease-in-out infinite;
+}

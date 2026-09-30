@@ -1,0 +1,377 @@
+/* Print styles for assessment brief preview */
+@media print {
+  @page {
+    margin: 0.5cm;
+    size: A4;
+  }
+
+  /* Reduce page margins when printing specific sections to minimize empty space */
+  @page:first {
+    margin-top: 0.5cm;
+  }
+
+  /* Ensure body and html are visible when printing */
+  body.print-checklist:not(.print-submission-form),
+  body.print-submission-form:not(.print-checklist),
+  body.print-checklist.print-submission-form,
+  html.print-checklist:not(.print-submission-form),
+  html.print-submission-form:not(.print-checklist),
+  html.print-checklist.print-submission-form {
+    visibility: visible !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Force light mode when printing - override dark mode styles */
+  body.dark,
+  html.dark,
+  .dark {
+    --brand: oklch(0.452 0.313 264.052) !important;
+    --background: oklch(1 0 0) !important;
+    --foreground: oklch(0.147 0.004 49.25) !important;
+    --card: oklch(1 0 0) !important;
+    --card-foreground: oklch(0.147 0.004 49.25) !important;
+    --popover: oklch(1 0 0) !important;
+    --popover-foreground: oklch(0.147 0.004 49.25) !important;
+    --primary: oklch(0.216 0.006 56.043) !important;
+    --primary-foreground: oklch(0.985 0.001 106.423) !important;
+    --secondary: oklch(0.97 0.001 106.424) !important;
+    --secondary-foreground: oklch(0.216 0.006 56.043) !important;
+    --muted: oklch(0.97 0.001 106.424) !important;
+    --muted-foreground: oklch(0.553 0.013 58.071) !important;
+    --accent: oklch(0.97 0.001 106.424) !important;
+    --accent-foreground: oklch(0.216 0.006 56.043) !important;
+    --destructive: oklch(0.577 0.245 27.325) !important;
+    --border: oklch(0.923 0.003 48.717) !important;
+    --input: oklch(0.923 0.003 48.717) !important;
+    --ring: oklch(0.709 0.01 56.259) !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  /* Hide all buttons when printing */
+  button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Force all containers to block display and full width */
+  body, html {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset all flex/grid layouts */
+  main,
+  main > *,
+  [data-panel-group],
+  [data-panel],
+  [data-panel-group-direction] {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    flex: none !important;
+    position: static !important;
+  }
+
+  /* Ensure content is centered and full width */
+  #student-preview-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 5% !important;
+  }
+
+  /* Remove any flex/grid layouts that push content to the side */
+  [data-radix-scroll-area-viewport] {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Force the right panel container to full width */
+  .h-full.flex.flex-col {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Checklist print styles */
+  input[type='checkbox'] {
+    -webkit-appearance: checkbox;
+    appearance: checkbox;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    width: 16px !important;
+    height: 16px !important;
+    border: 1px solid #000 !important;
+    margin-top: 2px !important;
+  }
+
+  /* Show checked state in print */
+  input[type='checkbox']:checked {
+    position: relative;
+  }
+
+  input[type='checkbox']:checked::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    font-size: 14px;
+    color: #000;
+    font-weight: bold;
+  }
+
+  /* When printing only checklist (not both) - hide everything first using visibility */
+  body.print-checklist:not(.print-submission-form) * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the checklist and its contents when printing checklist alone */
+  body.print-checklist:not(.print-submission-form) #printable-checklist,
+  body.print-checklist:not(.print-submission-form) #printable-checklist * {
+    visibility: visible !important;
+  }
+
+  /* Ensure proper display for checklist elements when printing checklist alone */
+  body.print-checklist:not(.print-submission-form) #printable-checklist {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 20px !important;
+    color: #000 !important;
+    border-color: #e5e7eb !important;
+    page-break-inside: avoid !important;
+    margin: 0 !important;
+  }
+
+  body.print-checklist:not(.print-submission-form) #printable-checklist ul {
+    list-style: none !important;
+    padding: 0 !important;
+  }
+
+  body.print-checklist:not(.print-submission-form) #printable-checklist li {
+    margin-bottom: 10px !important;
+    color: #000 !important;
+    border-color: #e5e7eb !important;
+  }
+
+  body.print-checklist:not(.print-submission-form) #printable-checklist label {
+    display: flex !important;
+    align-items: flex-start !important;
+    color: #000 !important;
+  }
+
+  body.print-checklist:not(.print-submission-form) #printable-checklist input[type='checkbox'] {
+    display: inline-block !important;
+    margin-right: 8px !important;
+  }
+
+  /* Force light mode colors for checkbox symbols */
+  body.print-checklist:not(.print-submission-form) #printable-checklist .custom-checkbox-text,
+  body.print-checklist:not(.print-submission-form) #printable-checklist .custom-checkbox-text::before {
+    color: #000 !important;
+  }
+
+  body.print-checklist:not(.print-submission-form) #printable-checklist .custom-checkbox-input:checked + .custom-checkbox-text::before {
+    color: #0000ff !important; /* Blue color for checked state in print */
+  }
+
+  /* When printing only submission form (not both) - hide everything first using visibility */
+  body.print-submission-form:not(.print-checklist) * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the submission form and its contents when printing submission form alone */
+  body.print-submission-form:not(.print-checklist) #printable-submission-form,
+  body.print-submission-form:not(.print-checklist) #printable-submission-form * {
+    visibility: visible !important;
+  }
+
+  /* Ensure proper display for submission form elements when printing alone */
+  body.print-submission-form:not(.print-checklist) #printable-submission-form {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 20px !important;
+    color: #000 !important;
+    border-color: #e5e7eb !important;
+    page-break-inside: avoid !important;
+    margin: 0 !important;
+  }
+
+  body.print-submission-form:not(.print-checklist) #printable-submission-form > div {
+    margin-bottom: 16px !important;
+  }
+
+  body.print-submission-form:not(.print-checklist) #printable-submission-form label {
+    display: block !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.print-submission-form:not(.print-checklist) #printable-submission-form p {
+    display: block !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.print-submission-form:not(.print-checklist) #printable-submission-form input {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-color: #000 !important;
+    color: #000 !important;
+    background: white !important;
+  }
+
+  body.print-submission-form:not(.print-checklist) #printable-submission-form input {
+    border-color: #000 !important;
+    color: #000 !important;
+    background: white !important;
+  }
+
+  /* When printing both checklist and submission form - hide everything first using visibility */
+  body.print-checklist.print-submission-form * {
+    visibility: hidden !important;
+  }
+
+  /* Show both the checklist and submission form */
+  body.print-checklist.print-submission-form #printable-checklist,
+  body.print-checklist.print-submission-form #printable-checklist *,
+  body.print-checklist.print-submission-form #printable-submission-form,
+  body.print-checklist.print-submission-form #printable-submission-form * {
+    visibility: visible !important;
+  }
+
+  /* Ensure proper display for both sections when printing together */
+  body.print-checklist.print-submission-form #printable-checklist,
+  body.print-checklist.print-submission-form #printable-submission-form {
+    position: relative !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 20px !important;
+    color: #000 !important;
+    border-color: #e5e7eb !important;
+    margin: 0 0 20px 0 !important;
+    page-break-inside: avoid !important;
+    height: auto !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist ul {
+    display: block !important;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist li {
+    display: list-item !important;
+    margin-bottom: 10px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist label {
+    display: flex !important;
+    align-items: flex-start !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist input[type='checkbox'] {
+    display: inline-block !important;
+    margin-right: 8px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist span {
+    display: inline !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-submission-form > div {
+    display: block !important;
+    margin-bottom: 16px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-submission-form label {
+    display: block !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-submission-form p {
+    display: block !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-submission-form input {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure proper display for both sections when printing together */
+  body.print-checklist.print-submission-form #printable-checklist,
+  body.print-checklist.print-submission-form #printable-submission-form {
+    position: relative !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 20px !important;
+    color: #000 !important;
+    border-color: #e5e7eb !important;
+    margin-bottom: 20px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist ul {
+    list-style: none !important;
+    padding: 0 !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist li {
+    margin-bottom: 10px !important;
+    color: #000 !important;
+    border-color: #e5e7eb !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist label {
+    display: flex !important;
+    align-items: flex-start !important;
+    color: #000 !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist input[type='checkbox'] {
+    display: inline-block !important;
+    margin-right: 8px !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist .custom-checkbox-text,
+  body.print-checklist.print-submission-form #printable-checklist .custom-checkbox-text::before {
+    color: #000 !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-checklist .custom-checkbox-input:checked + .custom-checkbox-text::before {
+    color: #0000ff !important;
+  }
+
+  body.print-checklist.print-submission-form #printable-submission-form input {
+    border-color: #000 !important;
+    color: #000 !important;
+    background: white !important;
+  }
+
+  /* Prevent empty pages - collapse hidden elements */
+  /* body.print-checklist:not(.print-submission-form) *:not(#printable-checklist):not(#printable-checklist *),
+  body.print-submission-form:not(.print-checklist) *:not(#printable-submission-form):not(#printable-submission-form *),
+  body.print-checklist.print-submission-form *:not(#printable-checklist):not(#printable-checklist *):not(#printable-submission-form):not(#printable-submission-form *) {
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    line-height: 0 !important;
+  } */
+}

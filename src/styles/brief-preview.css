@@ -1,0 +1,211 @@
+/* Brief preview — shared across viewer, builder, insights */
+
+.brief-preview .custom-checkbox-wrapper{
+  position: relative;
+}
+
+.brief-preview .custom-checkbox-input{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brief-preview .custom-checkbox-label{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.brief-preview .custom-checkbox-label:hover{
+  transform: translateX(2px);
+}
+
+.brief-preview .custom-checkbox-text::before{
+  content: "□";
+  width: 1.25em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.5rem;
+  font-size: 1.2em;
+  transition: all 200ms ease;
+}
+
+.brief-preview .custom-checkbox-input:checked + .custom-checkbox-text::before{
+  content: "✓";
+  color: var(--brand);
+}
+
+.brief-preview .custom-checkbox-input:focus-visible + .custom-checkbox-text::before{
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.brief-preview.font-size-scalable{
+  --font-size-min: 16px;
+  font-size: max(var(--font-size-min), calc(1rem * var(--font-scale, 1)));
+}
+.brief-preview.font-size-scalable [class*="text-xs"]{
+  font-size: max(var(--font-size-min), calc(0.75rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-sm"]{
+  font-size: max(var(--font-size-min), calc(0.875rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-base"]{
+  font-size: max(var(--font-size-min), calc(1rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-lg"]{
+  font-size: max(var(--font-size-min), calc(1.125rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-xl"]{
+  font-size: max(var(--font-size-min), calc(1.25rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-2xl"]{
+  font-size: max(var(--font-size-min), calc(1.5rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-3xl"]{
+  font-size: max(var(--font-size-min), calc(1.875rem * var(--font-scale, 1))) !important;
+}
+.brief-preview.font-size-scalable [class*="text-4xl"]{
+  font-size: max(var(--font-size-min), calc(2.25rem * var(--font-scale, 1))) !important;
+}
+/* Handle custom text sizes like text-[10px] */
+.brief-preview.font-size-scalable [class*="text-["]{
+  font-size: max(var(--font-size-min), calc(1em * var(--font-scale, 1))) !important;
+}
+/* Reset button font sizes to original (unscaled), never below 16px */
+.brief-preview.font-size-scalable button[class*="text-xs"],
+.brief-preview.font-size-scalable button[class*="text-xs"] *{
+  font-size: max(var(--font-size-min), 0.75rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-sm"],
+.brief-preview.font-size-scalable button[class*="text-sm"] *{
+  font-size: max(var(--font-size-min), 0.875rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-base"],
+.brief-preview.font-size-scalable button[class*="text-base"] *{
+  font-size: max(var(--font-size-min), 1rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-lg"],
+.brief-preview.font-size-scalable button[class*="text-lg"] *{
+  font-size: max(var(--font-size-min), 1.125rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-xl"],
+.brief-preview.font-size-scalable button[class*="text-xl"] *{
+  font-size: max(var(--font-size-min), 1.25rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-2xl"],
+.brief-preview.font-size-scalable button[class*="text-2xl"] *{
+  font-size: max(var(--font-size-min), 1.5rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-3xl"],
+.brief-preview.font-size-scalable button[class*="text-3xl"] *{
+  font-size: max(var(--font-size-min), 1.875rem) !important;
+}
+.brief-preview.font-size-scalable button[class*="text-4xl"],
+.brief-preview.font-size-scalable button[class*="text-4xl"] *{
+  font-size: max(var(--font-size-min), 2.25rem) !important;
+}
+/* Reset any button without explicit text class */
+.brief-preview.font-size-scalable button:not([class*="text-"]),
+.brief-preview.font-size-scalable button:not([class*="text-"]) *{
+  font-size: inherit !important;
+}
+/* LO badges and similar chips */
+.brief-preview.font-size-scalable span.rounded-full[class*="text-xs"]{
+  font-size: max(var(--font-size-min), 0.8rem) !important;
+}
+/* Schedule gantt: smaller labels on mobile (below 16px body minimum) */
+  @media (width < 40rem) {
+  .brief-preview.font-size-scalable [data-schedule-gantt] .schedule-gantt-axis-label{
+    font-size: 10px !important;
+  }
+  .brief-preview.font-size-scalable [data-schedule-gantt] .schedule-gantt-phase-label{
+    font-size: 11px !important;
+  }
+  .brief-preview.font-size-scalable [data-schedule-gantt] .schedule-gantt-caption,
+  .brief-preview.font-size-scalable [data-schedule-gantt] .schedule-gantt-hint{
+    font-size: 10px !important;
+  }
+  .brief-preview.font-size-scalable .brief-rubric-col-header{
+    font-size: 17px !important;
+    line-height: 1.25;
+  }
+  .brief-preview.font-size-scalable .brief-rubric-col-body{
+    font-size: 13px !important;
+    line-height: 1.35;
+  }
+  .brief-preview.font-size-scalable .brief-rubric-col-body--assessed{
+    font-size: 12px !important;
+    line-height: 1.35;
+  }
+  .brief-preview.font-size-scalable .brief-rubric-weighting{
+    font-size: 15px !important;
+    line-height: 1.25;
+  }
+  .brief-preview.font-size-scalable .brief-lo-assessed-number{
+    font-size: 20px !important;
+    line-height: 1;
+  }
+}
+.brief-preview.font-size-scalable [data-schedule-gantt-layout="mobile"] .schedule-gantt-axis-label{
+  font-size: 10px !important;
+}
+.brief-preview.font-size-scalable [data-schedule-gantt-layout="mobile"] .schedule-gantt-phase-label{
+  font-size: 11px !important;
+}
+.brief-preview.font-size-scalable [data-schedule-gantt-layout="mobile"] .schedule-gantt-caption,
+.brief-preview.font-size-scalable [data-schedule-gantt-layout="mobile"] .schedule-gantt-hint{
+  font-size: 10px !important;
+}
+.brief-preview .brief-viewer-focus-muted{
+  opacity: 0.3;
+  filter: blur(6px);
+  transition: opacity 0.45s ease, filter 0.45s ease;
+  pointer-events: none;
+  user-select: none;
+}
+.brief-preview .brief-viewer-focus-active{
+  opacity: 1;
+  filter: none;
+  transition: opacity 0.45s ease, filter 0.45s ease;
+}
+.brief-preview .brief-viewer-focus-passthrough{
+  opacity: 0.65;
+  filter: none;
+  transition: opacity 0.45s ease, filter 0.45s ease;
+  pointer-events: none;
+  user-select: none;
+}
+.brief-preview .brief-viewer-focus-section-current{
+  opacity: 1;
+  filter: none;
+  transition: opacity 0.45s ease, filter 0.45s ease;
+}
+.brief-preview .brief-viewer-focus-height-window{
+  opacity: 1;
+  filter: none;
+  transition: mask-image 0.35s ease, -webkit-mask-image 0.35s ease;
+}
+/* Label/content grids: allow fixed columns to shrink and wrap long tokens */
+.brief-preview.font-size-scalable .grid[class*='md:grid-cols'] > *{
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Viewer rubric summary row — semantic classes only (no text-* utilities on cells) */
+.brief-preview.font-size-scalable .brief-rubric-col-header{
+  line-height: 1.25;
+}
+.brief-preview.font-size-scalable .brief-rubric-col-body{
+  font-size: max(var(--font-size-min), calc(1.125rem * var(--font-scale, 1))) !important;
+  line-height: 1.35;
+}
+.brief-preview.font-size-scalable .brief-rubric-col-body--assessed{
+  font-size: max(var(--font-size-min), calc(0.875rem * var(--font-scale, 1))) !important;
+  line-height: 1.35;
+}
+.brief-preview.font-size-scalable .brief-rubric-weighting{
+  font-size: max(var(--font-size-min), calc(1.875rem * var(--font-scale, 1))) !important;
+  line-height: 1.25;
+}

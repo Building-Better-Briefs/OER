@@ -1,0 +1,82 @@
+/* Dashboard timeline progress bar, status label, and legend colours.
+   Override the --timeline-* variables in tokens.css or edit rules below. */
+
+.timeline-progress__indicator--not-started {
+  background-color: var(--timeline-not-started);
+}
+
+.timeline-progress__indicator--in-progress {
+  background-color: var(--timeline-in-progress);
+}
+
+.timeline-progress__indicator--due-soon {
+  background-color: var(--timeline-due-soon);
+}
+
+.timeline-progress__indicator--closed {
+  background-color: var(--timeline-closed);
+}
+
+.timeline-progress__status--not-started {
+  color: var(--timeline-not-started);
+}
+
+.timeline-progress__status--in-progress {
+  color: var(--timeline-in-progress-text);
+}
+
+.timeline-progress__status--due-soon {
+  color: var(--timeline-due-soon-text);
+}
+
+.timeline-progress__status--closed {
+  color: var(--timeline-closed-text);
+}
+
+.timeline-legend__dot {
+  display: inline-block;
+  height: 0.5rem;
+  width: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.timeline-legend__dot--not-started {
+  background-color: var(--timeline-not-started);
+}
+
+.timeline-legend__dot--in-progress {
+  background-color: var(--timeline-in-progress);
+}
+
+.timeline-legend__dot--due-soon {
+  background-color: var(--timeline-due-soon);
+}
+
+.timeline-legend__dot--closed {
+  background-color: var(--timeline-closed);
+}
+
+.timeline-dot {
+  display: inline-block;
+  height: 0.5rem;
+  width: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.timeline-dot--not-started {
+  background-color: var(--timeline-dot-not-started);
+}
+
+.timeline-dot--in-progress {
+  background-color: var(--timeline-in-progress);
+}
+
+.timeline-dot--due-soon {
+  background-color: var(--timeline-due-soon);
+}
+
+.timeline-dot--closed {
+  background-color: var(--timeline-dot-closed);
+}

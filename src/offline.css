@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@plugin 'tailwind-scrollbar-hide';
+@custom-variant dark (&:is(.dark *));
+
+@source '../src/**/*.{ts,tsx}';
+
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/utilities.css';
+@import './styles/print.css';
+@import './styles/brief-preview.css';
+@import './styles/tables.css';
+@import './styles/timeline-progress.css';
+@import './styles/chrome.css';

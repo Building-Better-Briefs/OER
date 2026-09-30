@@ -1,0 +1,422 @@
+/* Header styles from example */
+.site-header {
+  position: relative;
+  background-color: var(--background);
+  z-index: 2;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.site-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.site-main > .dashboard-page {
+  flex: 1;
+}
+
+/* Hide global chrome on brief builder page */
+body:has(.brief-builder-page) .site-chrome,
+body:has(.brief-builder-page) .site-footer {
+  display: none;
+}
+
+/* Hide global footer on dashboard page (dashboard renders its own) */
+body:has(.dashboard-page) > .site-footer {
+  display: none;
+}
+
+/* Immersive student notebook — hide global site chrome */
+body:has(.notebook-page) .site-chrome,
+body:has(.notebook-page) > .site-footer {
+  display: none;
+}
+
+body:has(.notebook-page) .site-chrome-actions {
+  display: none;
+}
+
+/* Dashboard tables fit their container on large screens */
+@media (min-width: 64rem) {
+  .dashboard-data-table [data-slot='table-container'] {
+    overflow-x: visible;
+  }
+}
+
+/* Dashboard table — row borders on cells (tr borders don't render with border-collapse: separate) */
+.dashboard-data-table [data-slot='table-body'] [data-slot='table-cell'] {
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-data-table [data-slot='table-body'] [data-slot='table-row'] {
+  border-bottom-width: 0;
+}
+
+.site-header__inner {
+  max-width: 80rem; /* content-max-width */
+  margin-inline: auto;
+  padding-inline: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* Match site header with public brief viewer content (max-w-5xl + brief padding) */
+body:has(.brief-viewer-page) .site-header__inner {
+  max-width: 64rem;
+  padding-inline: 0.75rem;
+}
+
+@media (min-width: 40rem) {
+  body:has(.brief-viewer-page) .site-header__inner {
+    padding-left: 1rem; /* px-4 + p-8, aligned with "Assessment Brief" */
+    padding-right: 1rem;
+  }
+}
+
+.site-header__meta:has(p) {
+  line-height: 1.1;
+}
+
+.site-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.site-logo__img {
+  width: 100px;
+  height: auto;
+  display: none;
+  transition: opacity 200ms ease;
+}
+
+.site-logo__img--footer {
+  width: 84px;
+}
+
+/* Header: follow document theme (light bg → dark logo, dark bg → light logo) */
+.site-logo[data-surface='theme'] .site-logo__img--for-light-bg {
+  display: block;
+}
+
+.dark .site-logo[data-surface='theme'] .site-logo__img--for-light-bg {
+  display: none;
+}
+
+.dark .site-logo[data-surface='theme'] .site-logo__img--for-dark-bg {
+  display: block;
+}
+
+/* Footer: always on a dark background */
+.site-logo[data-surface='dark'] .site-logo__img--for-light-bg {
+  display: none;
+}
+
+.site-logo[data-surface='dark'] .site-logo__img--for-dark-bg {
+  display: block;
+}
+
+.site-logo:hover .site-logo__img,
+.site-logo:focus-visible .site-logo__img {
+  opacity: 0.85;
+}
+
+.medium {
+  font-weight: 500;
+}
+
+.light {
+  font-weight: 300;
+}
+
+@media (max-width: 34rem) {
+  .site-header__inner {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.site-footer {
+  margin-top: auto;
+  padding-block: 0.5rem;
+  padding-bottom: 1rem;
+  padding-top: 1rem;
+  background-color: var(--site-footer-bg);
+  color: var(--site-footer-fg);
+  border-top: 1px solid var(--site-footer-border);
+}
+
+.site-footer__inner {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.site-footer__logo-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.site-footer__logo-link:hover .site-footer__logo,
+.site-footer__logo-link:focus-visible .site-footer__logo {
+  opacity: 0.9;
+}
+
+.site-footer__logo {
+  display: block;
+  width: auto;
+  height: 2.25rem;
+  transition: opacity 200ms ease;
+}
+
+.site-footer__copyright {
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: var(--site-footer-muted);
+  margin: 0;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* ===============================
+   SITE CHROME ACTIONS
+================================ */
+
+.site-chrome-actions {
+  position: fixed;
+  top: calc(1rem - 4px);
+  right: 1rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.site-chrome-actions .theme-toggle,
+.site-chrome-actions .help-button,
+.site-chrome-actions .settings-button,
+.site-chrome-actions .clipboard-button,
+.site-chrome-actions .student-dashboard-button {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.site-chrome-actions svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke-width: 1.25;
+}
+
+/* ===============================
+   DARK MODE TOGGLE
+================================ */
+
+.theme-toggle {
+  position: fixed;
+  top: calc(1rem - 4px);
+  right: 1rem;
+  border: 0;
+  outline: 0;
+  z-index: 100;
+  background: transparent;
+  color: var(--color-foreground);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  padding: 0.5rem;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-2px);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 0.5rem;
+}
+
+.dark .theme-toggle:focus-visible {
+  outline: 2px solid var(--brand);
+}
+
+.theme-toggle__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================================
+   TOOLS BUTTON
+================================ */
+
+.tools-button {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  border: 0;
+  outline: 0;
+  z-index: 100;
+  background: transparent;
+  color: var(--color-foreground);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  padding: 0.5rem;
+}
+
+.tools-button:hover {
+  transform: translateY(-2px);
+}
+
+.tools-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 0.5rem;
+}
+
+.dark .tools-button:focus-visible {
+  outline: 2px solid var(--brand);
+}
+
+.tools-button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================================
+   HELP BUTTON
+================================ */
+
+.help-button {
+  position: fixed;
+  top: calc(1rem - 4px);
+  right: 3rem;
+  border: 0;
+  outline: 0;
+  z-index: 100;
+  background: transparent;
+  color: var(--color-foreground);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  padding: 0.5rem;
+}
+
+.help-button:hover {
+  transform: translateY(-2px);
+}
+
+.help-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 0.5rem;
+}
+
+.dark .help-button:focus-visible {
+  outline: 2px solid var(--brand);
+}
+
+.help-button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================================
+   SETTINGS BUTTON
+================================ */
+
+.settings-button {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-foreground);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  padding: 0.5rem;
+  text-decoration: none;
+}
+
+.settings-button:hover {
+  transform: translateY(-2px);
+}
+
+.settings-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 0.5rem;
+}
+
+.dark .settings-button:focus-visible {
+  outline: 2px solid var(--brand);
+}
+
+.settings-button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================================
+   CLIPBOARD BUTTON
+================================ */
+
+.clipboard-button {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-foreground);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  padding: 0.5rem;
+}
+
+.clipboard-button:hover {
+  transform: translateY(-2px);
+}
+
+.clipboard-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 0.5rem;
+}
+
+.dark .clipboard-button:focus-visible {
+  outline: 2px solid var(--brand);
+}
+
+.clipboard-button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
