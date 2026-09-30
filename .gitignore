@@ -30,3 +30,4 @@ coverage/
 
 # Upstream sync artifact (pnpm copy-upstream)
 copied-manifest.json
+scripts/
