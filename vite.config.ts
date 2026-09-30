@@ -56,7 +56,7 @@ export default defineConfig({
                 theme_color: '#ffffff',
                 background_color: '#ffffff',
                 display: 'standalone',
-                start_url: './#/dashboard',
+                start_url: './?launcher=pwa',
                 scope: './',
                 icons: [
                     {
@@ -78,7 +78,8 @@ export default defineConfig({
                     '**/*.{js,css,html,ico,svg,png,ttf,woff2,webmanifest,pdf}'
                 ],
                 maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-                navigateFallback: 'index.html'
+                navigateFallback: 'index.html',
+                clientsClaim: true
             }
         })
     ],

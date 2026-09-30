@@ -1,6 +1,7 @@
 import { StrictMode, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { PwaLauncherRedirect } from '@/components/pwa-launcher-redirect';
 import { Toaster } from '@/components/ui/sonner';
 import { OfflineAppLayout } from '@/components/offline-app-layout';
 import './offline.css';
@@ -23,6 +24,7 @@ const BuilderPage = lazy(() =>
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <HashRouter>
+            <PwaLauncherRedirect />
             <Suspense fallback={<div className='p-8'>Loading…</div>}>
                 <Routes>
                     <Route element={<OfflineAppLayout />}>

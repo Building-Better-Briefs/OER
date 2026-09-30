@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BuildingBetterBriefsReadMoreSheet } from '@/components/building-better-briefs-read-more-sheet';
 import { PwaInstallBanner } from '@/components/pwa-install-banner';
+import { PwaInstallHeaderButton } from '@/components/pwa-install-header-button';
 import {
     Dialog,
     DialogContent,
@@ -75,7 +76,7 @@ export function DashboardPage() {
     return (
         <div className='dashboard-page flex flex-1 flex-col px-4 py-8 sm:px-6'>
             <header className='mx-auto mb-8 w-full max-w-[80rem]'>
-                <div className='mb-4'>
+                <div className='mb-4 flex flex-wrap items-center gap-1'>
                     <Button
                         variant='ghost'
                         size='sm'
@@ -84,6 +85,7 @@ export function DashboardPage() {
                         <Info className='size-4' aria-hidden />
                         About this project
                     </Button>
+                    <PwaInstallHeaderButton />
                 </div>
                 <h1 className='text-2xl font-extralight tracking-tight sm:text-3xl'>
                     Assessment Brief Builder
@@ -92,6 +94,7 @@ export function DashboardPage() {
                     Offline — briefs are stored in this browser. Export a backup
                     regularly.
                 </p>
+                <PwaInstallBanner />
                 <div className='mt-4 flex flex-wrap gap-2'>
                     <Button asChild>
                         <Link
@@ -119,7 +122,6 @@ export function DashboardPage() {
                         </label>
                     </Button>
                 </div>
-                <PwaInstallBanner />
             </header>
 
             <main className='mx-auto w-full max-w-[80rem]'>
