@@ -1,0 +1,1 @@
+import{r as e}from"./brief-builder-page-DDqE8GrP.js";export{e as generatePDF};
