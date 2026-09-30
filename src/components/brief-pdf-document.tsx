@@ -106,13 +106,6 @@ const PDF_COL_CONTENT = '70%';
  * the following content (see react-pdf `minPresenceAhead`, in points).
  */
 const PDF_HEADING_MIN_PRESENCE_AHEAD = 120;
-/**
- * Rubric section title: larger than generic headings so "Rubric" is not placed
- * when only a sliver of page remains (avoids overlap with the first criterion
- * table). Do not wrap the title + table in `View wrap={false}` — nested
- * `wrap={false}` with each criterion box triggers layout bugs at page breaks.
- */
-const PDF_RUBRIC_TITLE_MIN_PRESENCE_AHEAD = 380;
 /** No mid-word breaks in narrow label columns (react-pdf: whole words wrap to the next line). */
 const PDF_LABEL_TEXT_PROPS = {
     hyphenationCallback: (word: string) => [word]
@@ -364,11 +357,47 @@ type RubricCriterionPDF = {
     }>;
 };
 
+function PdfSectionStart({
+    title,
+    children,
+    breakWithContent = true
+}: {
+    title: string;
+    children: React.ReactNode;
+    breakWithContent?: boolean;
+}) {
+    const titleNode = <Text style={pdfStyles.sectionTitle}>{title}</Text>;
+    if (!breakWithContent) {
+        return (
+            <View>
+                {titleNode}
+                {children}
+            </View>
+        );
+    }
+    return (
+        <View wrap={false}>
+            {titleNode}
+            {children}
+        </View>
+    );
+}
+
+function pdfRowWrapProps(unbreakable: boolean): { wrap?: false } {
+    return unbreakable ? { wrap: false } : {};
+}
+
 /** One bordered rubric table (a single criterion and its grade rows). */
-function RubricCriterionBox({ criterion }: { criterion: RubricCriterionPDF }) {
+function RubricCriterionBox({
+    criterion,
+    unbreakable = true
+}: {
+    criterion: RubricCriterionPDF;
+    unbreakable?: boolean;
+}) {
     return (
         <View
-            wrap={false}
+            {...pdfRowWrapProps(unbreakable)}
             style={{
                 marginBottom: PDF_RUBRIC_CRITERION_GAP,
                 border: `1 solid ${PDF_BORDER}`
@@ -579,30 +608,25 @@ const BriefPDFDocument = ({
                     !hasVisibleCustomSubsections
                 ) {
                     return (
-                        <Text style={pdfStyles.textMuted}>
-                            Content not yet added for this section
-                        </Text>
+                        <PdfSectionStart title='Project Details'>
+                            <Text style={pdfStyles.textMuted}>
+                                Content not yet added for this section
+                            </Text>
+                        </PdfSectionStart>
                     );
                 }
 
-                return (
-                    <View>
-                        <Text
-                            style={pdfStyles.sectionTitle}
-                            minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                        >
-                            Project Details
-                        </Text>
-                        <View style={{ border: `1 solid ${PDF_BORDER}` }}>
-                            {visibleProjectDetailBlockIds.map((blockId) => {
+                const projectDetailRowNodes: React.ReactElement[] = [];
+                visibleProjectDetailBlockIds.forEach((blockId) => {
+                    const rowUnbreakable = projectDetailRowNodes.length > 0;
                                 if (
                                     blockId === 'project-overview-content' &&
                                     hasOverview
                                 ) {
-                                    return (
+                                    projectDetailRowNodes.push(
                                 <View
                                     key={blockId}
-                                    wrap={false}
+                                    {...pdfRowWrapProps(rowUnbreakable)}
                                     style={pdfStyles.gridRow}>
                                     <View style={pdfStyles.gridLabel}>
                                         <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -626,10 +650,10 @@ const BriefPDFDocument = ({
                                     blockId === 'learning-outcomes' &&
                                     hasLearningOutcomes
                                 ) {
-                                    return (
-                                <React.Fragment key={blockId}>
+                                    projectDetailRowNodes.push(
                                     <View
-                                        wrap={false}
+                                        key={blockId}
+                                        {...pdfRowWrapProps(rowUnbreakable)}
                                         style={pdfStyles.gridRow}>
                                         <View style={pdfStyles.gridLabel}>
                                             <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -706,7 +730,6 @@ const BriefPDFDocument = ({
                                             )}
                                         </View>
                                     </View>
-                                </React.Fragment>
                                     );
                                 }
 
@@ -714,10 +737,10 @@ const BriefPDFDocument = ({
                                     blockId === 'key-expectations' &&
                                     hasKeyExpectations
                                 ) {
-                                    return (
+                                    projectDetailRowNodes.push(
                                 <View
                                     key={blockId}
-                                    wrap={false}
+                                    {...pdfRowWrapProps(rowUnbreakable)}
                                     style={pdfStyles.gridRow}>
                                     <View style={pdfStyles.gridLabel}>
                                         <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -782,10 +805,10 @@ const BriefPDFDocument = ({
                                     blockId === 'deliverables' &&
                                     hasDeliverables
                                 ) {
-                                    return (
+                                    projectDetailRowNodes.push(
                                 <View
                                     key={blockId}
-                                    wrap={false}
+                                    {...pdfRowWrapProps(rowUnbreakable)}
                                     style={pdfStyles.gridRow}>
                                     <View style={pdfStyles.gridLabel}>
                                         <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -847,10 +870,10 @@ const BriefPDFDocument = ({
                                 }
 
                                 if (blockId === 'resources' && hasResources) {
-                                    return (
+                                    projectDetailRowNodes.push(
                                 <View
                                     key={blockId}
-                                    wrap={false}
+                                    {...pdfRowWrapProps(rowUnbreakable)}
                                     style={pdfStyles.gridRow}>
                                     <View style={pdfStyles.gridLabel}>
                                         <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -916,13 +939,13 @@ const BriefPDFDocument = ({
                                         normalizedCustomSubsections.find(
                                             (entry) => entry.id === customId
                                         );
-                                    if (!subsection) return null;
+                                    if (!subsection) return;
 
                                     if (subsection.type === 'accordion') {
-                                        return (
+                                        projectDetailRowNodes.push(
                                             <View
                                                 key={blockId}
-                                                wrap={false}
+                                                {...pdfRowWrapProps(rowUnbreakable)}
                                                 style={pdfStyles.gridRow}>
                                                 <View style={pdfStyles.gridLabel}>
                                                     <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -976,10 +999,10 @@ const BriefPDFDocument = ({
                                         );
                                     }
 
-                                    return (
+                                    projectDetailRowNodes.push(
                                         <View
                                             key={blockId}
-                                            wrap={false}
+                                            {...pdfRowWrapProps(rowUnbreakable)}
                                             style={pdfStyles.gridRow}>
                                             <View style={pdfStyles.gridLabel}>
                                                 <Text {...PDF_LABEL_TEXT_PROPS}>
@@ -1009,10 +1032,28 @@ const BriefPDFDocument = ({
                                         </View>
                                     );
                                 }
+                });
 
-                                return null;
-                            })}
-                        </View>
+                const [firstProjectRow, ...restProjectRows] =
+                    projectDetailRowNodes;
+
+                return (
+                    <View>
+                        <PdfSectionStart title='Project Details'>
+                            <View style={{ border: `1 solid ${PDF_BORDER}` }}>
+                                {firstProjectRow}
+                            </View>
+                        </PdfSectionStart>
+                        {restProjectRows.length > 0 ? (
+                            <View
+                                style={{
+                                    borderLeft: `1 solid ${PDF_BORDER}`,
+                                    borderRight: `1 solid ${PDF_BORDER}`,
+                                    borderBottom: `1 solid ${PDF_BORDER}`
+                                }}>
+                                {restProjectRows}
+                            </View>
+                        ) : null}
                     </View>
                 );
             }
@@ -1023,35 +1064,28 @@ const BriefPDFDocument = ({
                     content.rubricCriteria.length === 0
                 ) {
                     return (
-                        <View>
-                            <Text
-                                style={pdfStyles.sectionTitle}
-                                minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                            >
-                                Rubric
-                            </Text>
+                        <PdfSectionStart title='Rubric'>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
                 const criteria = content.rubricCriteria as RubricCriterionPDF[];
+                const [firstCriterion, ...restCriteria] = criteria;
 
                 return (
                     <View>
-                        <Text
-                            style={pdfStyles.sectionTitle}
-                            minPresenceAhead={
-                                PDF_RUBRIC_TITLE_MIN_PRESENCE_AHEAD
-                            }
-                        >
-                            Rubric
-                        </Text>
-                        {criteria.map((criterion, i) => (
+                        <PdfSectionStart title='Rubric'>
                             <RubricCriterionBox
-                                key={`rubric-criterion-${i}`}
+                                criterion={firstCriterion}
+                                unbreakable={false}
+                            />
+                        </PdfSectionStart>
+                        {restCriteria.map((criterion, i) => (
+                            <RubricCriterionBox
+                                key={`rubric-criterion-${i + 1}`}
                                 criterion={criterion}
                             />
                         ))}
@@ -1065,51 +1099,57 @@ const BriefPDFDocument = ({
                     Object.keys(content.onePageSummaryContent).length === 0
                 ) {
                     return (
-                        <View>
-                            <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                                One Page Summary
-                            </Text>
+                        <PdfSectionStart title='One Page Summary'>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
+                const summaryEntries = Object.entries(
+                    content.onePageSummaryContent
+                );
+                const [firstEntry, ...restEntries] = summaryEntries;
+
+                const renderSummaryRow = (
+                    [key, value]: [string, unknown],
+                    unbreakable: boolean
+                ) => (
+                    <View
+                        key={key}
+                        {...pdfRowWrapProps(unbreakable)}
+                        style={pdfStyles.gridRow}>
+                        <View style={pdfStyles.gridLabel}>
+                            <Text {...PDF_LABEL_TEXT_PROPS}>{key}</Text>
+                        </View>
+                        <View style={pdfStyles.gridContent}>
+                            <Text style={pdfStyles.text}>
+                                {parseContentWithLinks(value as string)}
+                            </Text>
+                        </View>
+                    </View>
+                );
+
                 return (
                     <View>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            One Page Summary
-                        </Text>
-                        <View style={{ border: `1 solid ${PDF_BORDER}` }}>
-                            {Object.entries(content.onePageSummaryContent).map(
-                                ([key, value]) => (
-                                    <View
-                                        key={key}
-                                        wrap={false}
-                                        style={pdfStyles.gridRow}>
-                                        <View style={pdfStyles.gridLabel}>
-                                            <Text {...PDF_LABEL_TEXT_PROPS}>
-                                                {key}
-                                            </Text>
-                                        </View>
-                                        <View style={pdfStyles.gridContent}>
-                                            <Text style={pdfStyles.text}>
-                                                {parseContentWithLinks(
-                                                    value as string
-                                                )}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                )
-                            )}
-                        </View>
+                        <PdfSectionStart title='One Page Summary'>
+                            <View style={{ border: `1 solid ${PDF_BORDER}` }}>
+                                {renderSummaryRow(firstEntry, false)}
+                            </View>
+                        </PdfSectionStart>
+                        {restEntries.length > 0 ? (
+                            <View
+                                style={{
+                                    borderLeft: `1 solid ${PDF_BORDER}`,
+                                    borderRight: `1 solid ${PDF_BORDER}`,
+                                    borderBottom: `1 solid ${PDF_BORDER}`
+                                }}>
+                                {restEntries.map((entry) =>
+                                    renderSummaryRow(entry, true)
+                                )}
+                            </View>
+                        ) : null}
                     </View>
                 );
             }
@@ -1124,100 +1164,113 @@ const BriefPDFDocument = ({
                 };
                 if (!schedulePhases.length) {
                     return (
-                        <View>
-                            <Text
-                                style={pdfStyles.sectionTitle}
-                                minPresenceAhead={
-                                    PDF_HEADING_MIN_PRESENCE_AHEAD
-                                }>
-                                Schedule
-                            </Text>
+                        <PdfSectionStart title='Schedule'>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
+                const renderSchedulePhase = (
+                    phase: {
+                        title?: string;
+                        timingMode?: 'date' | 'weeks';
+                        startDate?: string;
+                        endDate?: string;
+                        weekStart?: number;
+                        weekEnd?: number;
+                        instructions?: string;
+                    },
+                    idx: number,
+                    total: number
+                ) => {
+                    const timingLabel =
+                        phase.timingMode === 'weeks'
+                            ? `Weeks ${phase.weekStart || 1}-${phase.weekEnd || 1}`
+                            : `${phase.startDate ? formatDate(new Date(phase.startDate)) : 'Start TBD'} - ${phase.endDate ? formatDate(new Date(phase.endDate)) : 'End TBD'}`;
+                    const isLastRow = idx >= total - 1;
+                    const labelCellStyle = isLastRow
+                        ? {
+                              ...pdfStyles.gridLabel,
+                              borderBottom: 'none' as const
+                          }
+                        : pdfStyles.gridLabel;
+                    const contentCellStyle = isLastRow
+                        ? {
+                              ...pdfStyles.gridContent,
+                              borderBottom: 'none' as const
+                          }
+                        : pdfStyles.gridContent;
+
+                    return (
+                        <View key={idx} style={pdfStyles.gridRow}>
+                            <View
+                                style={{
+                                    ...labelCellStyle,
+                                    flexDirection: 'column'
+                                }}>
+                                <Text
+                                    style={{ fontWeight: 'normal' }}
+                                    {...PDF_LABEL_TEXT_PROPS}>
+                                    {phase.title || `Phase ${idx + 1}`}
+                                </Text>
+                                <Text
+                                    style={{
+                                        marginTop: 4,
+                                        fontSize: 11,
+                                        lineHeight: 1.35,
+                                        color: PDF_MUTED,
+                                        fontWeight: 'light'
+                                    }}>
+                                    {timingLabel}
+                                </Text>
+                            </View>
+                            <View style={contentCellStyle}>
+                                <Text style={pdfStyles.text}>
+                                    {parseContentWithLinks(
+                                        phase.instructions || ''
+                                    )}
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                };
+
                 return (
                     <View>
-                        <Text
-                            style={pdfStyles.sectionTitle}
-                            minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}>
-                            Schedule
-                        </Text>
-                        {scheduleViews.table !== false && (
-                            <View style={{ border: `1 solid ${PDF_BORDER}` }}>
-                                {schedulePhases.map(
-                                    (
-                                        phase: {
-                                            title?: string;
-                                            timingMode?: 'date' | 'weeks';
-                                            startDate?: string;
-                                            endDate?: string;
-                                            weekStart?: number;
-                                            weekEnd?: number;
-                                            instructions?: string;
-                                        },
-                                        idx: number
-                                    ) => {
-                                        const timingLabel =
-                                            phase.timingMode === 'weeks'
-                                                ? `Weeks ${phase.weekStart || 1}-${phase.weekEnd || 1}`
-                                                : `${phase.startDate ? formatDate(new Date(phase.startDate)) : 'Start TBD'} - ${phase.endDate ? formatDate(new Date(phase.endDate)) : 'End TBD'}`;
-                                        return (
-                                            <View
-                                                key={idx}
-                                                style={{
-                                                    flexDirection: 'row',
-                                                    borderBottom:
-                                                        idx <
-                                                        schedulePhases.length - 1
-                                                            ? `1 solid ${PDF_BORDER}`
-                                                            : 'none'
-                                                }}>
-                                                <View
-                                                    style={{
-                                                        width: PDF_COL_LABEL,
-                                                        borderRight: `1 solid ${PDF_BORDER}`,
-                                                        padding: PDF_BOX_PAD
-                                                    }}>
-                                                    <Text
-                                                        style={{
-                                                            fontWeight: 'normal'
-                                                        }}
-                                                        {...PDF_LABEL_TEXT_PROPS}>
-                                                        {phase.title ||
-                                                            `Phase ${idx + 1}`}
-                                                    </Text>
-                                                    <Text
-                                                        style={{
-                                                            marginTop: 4,
-                                                            fontSize: 11,
-                                                            color: PDF_MUTED,
-                                                            fontWeight: 'light'
-                                                        }}
-                                                        {...PDF_LABEL_TEXT_PROPS}>
-                                                        {timingLabel}
-                                                    </Text>
-                                                </View>
-                                                <View
-                                                    style={{
-                                                        width: PDF_COL_CONTENT,
-                                                        padding: PDF_BOX_PAD
-                                                    }}>
-                                                    <Text style={pdfStyles.text}>
-                                                        {parseContentWithLinks(
-                                                            phase.instructions ||
-                                                                ''
-                                                        )}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                        );
-                                    }
-                                )}
-                            </View>
+                        {scheduleViews.table !== false ? (
+                            <>
+                                <Text
+                                    style={pdfStyles.sectionTitle}
+                                    minPresenceAhead={
+                                        PDF_HEADING_MIN_PRESENCE_AHEAD
+                                    }>
+                                    Schedule
+                                </Text>
+                                <View
+                                    style={{
+                                        border: `1 solid ${PDF_BORDER}`
+                                    }}>
+                                    {schedulePhases.map(
+                                        (
+                                            phase: (typeof schedulePhases)[number],
+                                            idx: number
+                                        ) =>
+                                            renderSchedulePhase(
+                                                phase,
+                                                idx,
+                                                schedulePhases.length
+                                            )
+                                    )}
+                                </View>
+                            </>
+                        ) : (
+                            <PdfSectionStart title='Schedule'>
+                                <Text style={pdfStyles.textMuted}>
+                                    Schedule table is hidden for this brief.
+                                </Text>
+                            </PdfSectionStart>
                         )}
                     </View>
                 );
@@ -1229,103 +1282,122 @@ const BriefPDFDocument = ({
                     content.submissionFormFields.length === 0
                 ) {
                     return (
-                        <View>
-                            <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                                Submission Form
-                            </Text>
+                        <PdfSectionStart title='Submission Form'>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
-                return (
-                    <View>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            Submission Form
-                        </Text>
+                const formFields = content.submissionFormFields as Array<{
+                    title: string;
+                    description?: string;
+                    placeholder?: string;
+                    optionalDescription?: string;
+                }>;
+                const [firstFormField, ...restFormFields] = formFields;
+
+                const renderBriefFormField = (
+                    field: {
+                        title: string;
+                        description?: string;
+                        placeholder?: string;
+                        optionalDescription?: string;
+                    },
+                    idx: number,
+                    unbreakable: boolean
+                ) => {
+                    const isDeclarationField =
+                        field.title.trim().toLowerCase() === 'declaration';
+                    const placeholderText =
+                        field.placeholder || field.description || '';
+                    const helperDescription = (
+                        field.optionalDescription || ''
+                    ).replaceAll(
+                        '[INSERT_PROGRAMME]',
+                        metadata.programmeName || 'the programme'
+                    );
+                    const breakWithContent =
+                        isDeclarationField &&
+                        helperDescription.length > 1200;
+                    const fieldNode = (
                         <View
-                            style={{
-                                border: `1 solid ${PDF_BORDER}`,
-                                padding: PDF_BOX_PAD
-                            }}
-                        >
-                            {content.submissionFormFields.map(
-                                (
-                                    field: {
-                                        title: string;
-                                        description?: string;
-                                        placeholder?: string;
-                                        optionalDescription?: string;
-                                    },
-                                    idx: number
-                                ) => {
-                                    const isDeclarationField =
-                                        field.title.trim().toLowerCase() ===
-                                        'declaration';
-                                    const placeholderText =
-                                        field.placeholder ||
-                                        field.description ||
-                                        '';
-                                    const helperDescription = (
-                                        field.optionalDescription || ''
-                                    ).replaceAll(
-                                        '[INSERT_PROGRAMME]',
-                                        metadata.programmeName || 'the programme'
-                                    );
-                                    return (
-                                        <View
-                                            key={idx}
-                                            wrap={false}
-                                            style={pdfStyles.formField}>
-                                            <Text style={pdfStyles.formLabel}>
-                                                {field.title}
-                                            </Text>
-                                            {helperDescription && (
-                                                <Text
-                                                    style={{
-                                                        fontSize: 10,
-                                                        lineHeight: 1.3,
-                                                        marginBottom: 8,
-                                                        color: '#666',
-                                                        fontWeight: 'light'
-                                                    }}>
-                                                    {parseContentWithLinks(
-                                                        helperDescription
-                                                    )}
-                                                </Text>
-                                            )}
-                                            {isDeclarationField ? (
-                                                <Text
-                                                    style={{
-                                                        fontSize: 10,
-                                                        color: '#888',
-                                                        fontWeight: 'light'
-                                                    }}>
-                                                    Signed: ____________________
-                                                </Text>
-                                            ) : (
-                                                <Text
-                                                    style={{
-                                                        fontSize: 10,
-                                                        color: '#888',
-                                                        fontWeight: 'light'
-                                                    }}>
-                                                    {placeholderText}: ____________________
-                                                </Text>
-                                            )}
-                                        </View>
-                                    );
-                                }
+                            key={idx}
+                            {...pdfRowWrapProps(unbreakable)}
+                            style={pdfStyles.formField}>
+                            <Text style={pdfStyles.formLabel}>{field.title}</Text>
+                            {helperDescription ? (
+                                <Text
+                                    style={{
+                                        fontSize: 10,
+                                        lineHeight: 1.3,
+                                        marginBottom: 8,
+                                        color: '#666',
+                                        fontWeight: 'light'
+                                    }}>
+                                    {parseContentWithLinks(helperDescription)}
+                                </Text>
+                            ) : null}
+                            {isDeclarationField ? (
+                                <Text
+                                    style={{
+                                        fontSize: 10,
+                                        color: '#888',
+                                        fontWeight: 'light'
+                                    }}>
+                                    Signed: ____________________
+                                </Text>
+                            ) : (
+                                <Text
+                                    style={{
+                                        fontSize: 10,
+                                        color: '#888',
+                                        fontWeight: 'light'
+                                    }}>
+                                    {placeholderText}: ____________________
+                                </Text>
                             )}
                         </View>
+                    );
+                    if (idx === 0) {
+                        return (
+                            <PdfSectionStart
+                                title='Submission Form'
+                                breakWithContent={!breakWithContent}>
+                                <View
+                                    style={{
+                                        border: `1 solid ${PDF_BORDER}`,
+                                        padding: PDF_BOX_PAD
+                                    }}>
+                                    {fieldNode}
+                                </View>
+                            </PdfSectionStart>
+                        );
+                    }
+                    return fieldNode;
+                };
+
+                return (
+                    <View>
+                        {renderBriefFormField(firstFormField, 0, false)}
+                        {restFormFields.length > 0 ? (
+                            <View
+                                style={{
+                                    borderLeft: `1 solid ${PDF_BORDER}`,
+                                    borderRight: `1 solid ${PDF_BORDER}`,
+                                    borderBottom: `1 solid ${PDF_BORDER}`,
+                                    padding: PDF_BOX_PAD
+                                }}>
+                                {restFormFields.map((field, idx) =>
+                                    renderBriefFormField(
+                                        field,
+                                        idx + 1,
+                                        true
+                                    )
+                                )}
+                            </View>
+                        ) : null}
                     </View>
                 );
             }
@@ -1336,65 +1408,83 @@ const BriefPDFDocument = ({
                     content.checklistItems.length === 0
                 ) {
                     return (
-                        <View>
-                            <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                                Submission Checklist
-                            </Text>
+                        <PdfSectionStart title='Submission Checklist'>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
+                const checklistItems = content.checklistItems as string[];
+                const [firstChecklistItem, ...restChecklistItems] =
+                    checklistItems;
+
+                const renderChecklistRow = (
+                    item: string,
+                    idx: number,
+                    total: number,
+                    unbreakable: boolean
+                ) => (
+                    <View
+                        key={idx}
+                        {...pdfRowWrapProps(unbreakable)}
+                        style={[
+                            pdfStyles.checklistItem,
+                            {
+                                borderBottom:
+                                    idx < total - 1
+                                        ? `1 dashed ${PDF_BORDER}`
+                                        : 'none',
+                                paddingBottom: 6
+                            }
+                        ]}>
+                        <View style={pdfStyles.checkbox} />
+                        <Text
+                            style={{
+                                flex: 1,
+                                fontWeight: 'light',
+                                fontSize: 13
+                            }}>
+                            {item}
+                        </Text>
+                    </View>
+                );
+
                 return (
                     <View>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            Submission Checklist
-                        </Text>
-                        <View
-                            style={{
-                                border: `1 solid ${PDF_BORDER}`,
-                                padding: PDF_BOX_PAD
-                            }}
-                        >
-                            {content.checklistItems.map(
-                                (item: string, idx: number) => (
-                                    <View
-                                        key={idx}
-                                        wrap={false}
-                                        style={[
-                                            pdfStyles.checklistItem,
-                                            {
-                                                borderBottom:
-                                                    idx <
-                                                    content.checklistItems
-                                                        .length -
-                                                        1
-                                                    ? `1 dashed ${PDF_BORDER}`
-                                                    : 'none',
-                                                paddingBottom: 6
-                                            }
-                                        ]}>
-                                        <View style={pdfStyles.checkbox} />
-                                        <Text
-                                            style={{
-                                                flex: 1,
-                                                fontWeight: 'light', // font-light
-                                                fontSize: 13
-                                            }}>
-                                            {item}
-                                        </Text>
-                                    </View>
-                                )
-                            )}
-                        </View>
+                        <PdfSectionStart title='Submission Checklist'>
+                            <View
+                                style={{
+                                    border: `1 solid ${PDF_BORDER}`,
+                                    padding: PDF_BOX_PAD
+                                }}>
+                                {renderChecklistRow(
+                                    firstChecklistItem,
+                                    0,
+                                    checklistItems.length,
+                                    false
+                                )}
+                            </View>
+                        </PdfSectionStart>
+                        {restChecklistItems.length > 0 ? (
+                            <View
+                                style={{
+                                    borderLeft: `1 solid ${PDF_BORDER}`,
+                                    borderRight: `1 solid ${PDF_BORDER}`,
+                                    borderBottom: `1 solid ${PDF_BORDER}`,
+                                    padding: PDF_BOX_PAD
+                                }}>
+                                {restChecklistItems.map((item, idx) =>
+                                    renderChecklistRow(
+                                        item,
+                                        idx + 1,
+                                        checklistItems.length,
+                                        true
+                                    )
+                                )}
+                            </View>
+                        ) : null}
                     </View>
                 );
             }
@@ -1412,76 +1502,86 @@ const BriefPDFDocument = ({
                     )
                 ) {
                     return (
-                        <View>
-                            <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                                {sectionTitle}
-                            </Text>
+                        <PdfSectionStart title={sectionTitle}>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
+                const markedItems = items as Array<{
+                    title: string;
+                    description: string;
+                }>;
+                const [firstMarkedItem, ...restMarkedItems] = markedItems;
+
+                const renderMarkedRow = (
+                    item: { title: string; description: string },
+                    idx: number,
+                    total: number
+                ) => (
+                    <View
+                        key={idx}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'flex-start',
+                            borderBottom:
+                                idx < total - 1
+                                    ? `1 solid ${PDF_BORDER}`
+                                    : 'none'
+                        }}>
+                        <View
+                            style={{
+                                width: PDF_COL_LABEL,
+                                padding: PDF_BOX_PAD,
+                                borderRight: `1 solid ${PDF_BORDER}`
+                            }}>
+                            <Text
+                                style={{ fontWeight: 'normal' }}
+                                {...PDF_LABEL_TEXT_PROPS}>
+                                {item.title || ''}
+                            </Text>
+                        </View>
+                        <View
+                            style={{
+                                width: PDF_COL_CONTENT,
+                                padding: PDF_BOX_PAD
+                            }}>
+                            <Text style={pdfStyles.text}>
+                                {parseContentWithLinks(item.description || '')}
+                            </Text>
+                        </View>
+                    </View>
+                );
+
                 return (
                     <View>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            {sectionTitle}
-                        </Text>
-                        <View style={{ border: `1 solid ${PDF_BORDER}` }}>
-                            {items.map(
-                                (
-                                    item: {
-                                        title: string;
-                                        description: string;
-                                    },
-                                    idx: number
-                                ) => (
-                                    <View
-                                        key={idx}
-                                        style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'flex-start',
-                                            borderBottom:
-                                                idx < items.length - 1
-                                                    ? `1 solid ${PDF_BORDER}`
-                                                    : 'none'
-                                        }}>
-                                        <View
-                                            style={{
-                                                width: PDF_COL_LABEL,
-                                                padding: PDF_BOX_PAD,
-                                                borderRight: `1 solid ${PDF_BORDER}`
-                                            }}>
-                                            <Text
-                                                style={{
-                                                    fontWeight: 'normal'
-                                                }}
-                                                {...PDF_LABEL_TEXT_PROPS}>
-                                                {item.title || ''}
-                                            </Text>
-                                        </View>
-                                        <View
-                                            style={{
-                                                width: PDF_COL_CONTENT,
-                                                padding: PDF_BOX_PAD
-                                            }}>
-                                            <Text style={pdfStyles.text}>
-                                                {parseContentWithLinks(
-                                                    item.description || ''
-                                                )}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                )
-                            )}
-                        </View>
+                        <PdfSectionStart title={sectionTitle}>
+                            <View style={{ border: `1 solid ${PDF_BORDER}` }}>
+                                {renderMarkedRow(
+                                    firstMarkedItem,
+                                    0,
+                                    markedItems.length
+                                )}
+                            </View>
+                        </PdfSectionStart>
+                        {restMarkedItems.length > 0 ? (
+                            <View
+                                style={{
+                                    borderLeft: `1 solid ${PDF_BORDER}`,
+                                    borderRight: `1 solid ${PDF_BORDER}`,
+                                    borderBottom: `1 solid ${PDF_BORDER}`
+                                }}>
+                                {restMarkedItems.map((item, idx) =>
+                                    renderMarkedRow(
+                                        item,
+                                        idx + 1,
+                                        markedItems.length
+                                    )
+                                )}
+                            </View>
+                        ) : null}
                     </View>
                 );
             }
@@ -1492,53 +1592,74 @@ const BriefPDFDocument = ({
 
                 if (!hasFaqContent(faqItems)) {
                     return (
-                        <View>
-                            <Text
-                                style={pdfStyles.sectionTitle}
-                                minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}>
-                                {sectionTitle}
-                            </Text>
+                        <PdfSectionStart title={sectionTitle}>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
+                const [firstFaqItem, ...restFaqItems] = faqItems;
+
+                const renderFaqItem = (
+                    item: { question: string; answer: unknown },
+                    idx: number,
+                    total: number,
+                    unbreakable: boolean
+                ) => (
+                    <View
+                        key={idx}
+                        {...pdfRowWrapProps(unbreakable)}
+                        style={{
+                            padding: PDF_BOX_PAD,
+                            borderBottom:
+                                idx < total - 1
+                                    ? `1 solid ${PDF_BORDER}`
+                                    : 'none'
+                        }}>
+                        <Text
+                            style={{
+                                fontWeight: 'normal',
+                                marginBottom: 4
+                            }}>
+                            {item.question || ''}
+                        </Text>
+                        <Text style={pdfStyles.text}>
+                            {parseContentWithLinks(item.answer || '')}
+                        </Text>
+                    </View>
+                );
+
                 return (
                     <View>
-                        <Text
-                            style={pdfStyles.sectionTitle}
-                            minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}>
-                            {sectionTitle}
-                        </Text>
-                        <View style={{ border: `1 solid ${PDF_BORDER}` }}>
-                            {faqItems.map((item, idx) => (
-                                <View
-                                    key={idx}
-                                    wrap={false}
-                                    style={{
-                                        padding: PDF_BOX_PAD,
-                                        borderBottom:
-                                            idx < faqItems.length - 1
-                                                ? `1 solid ${PDF_BORDER}`
-                                                : 'none'
-                                    }}>
-                                    <Text
-                                        style={{
-                                            fontWeight: 'normal',
-                                            marginBottom: 4
-                                        }}>
-                                        {item.question || ''}
-                                    </Text>
-                                    <Text style={pdfStyles.text}>
-                                        {parseContentWithLinks(
-                                            item.answer || ''
-                                        )}
-                                    </Text>
-                                </View>
-                            ))}
-                        </View>
+                        <PdfSectionStart title={sectionTitle}>
+                            <View style={{ border: `1 solid ${PDF_BORDER}` }}>
+                                {renderFaqItem(
+                                    firstFaqItem,
+                                    0,
+                                    faqItems.length,
+                                    false
+                                )}
+                            </View>
+                        </PdfSectionStart>
+                        {restFaqItems.length > 0 ? (
+                            <View
+                                style={{
+                                    borderLeft: `1 solid ${PDF_BORDER}`,
+                                    borderRight: `1 solid ${PDF_BORDER}`,
+                                    borderBottom: `1 solid ${PDF_BORDER}`
+                                }}>
+                                {restFaqItems.map((item, idx) =>
+                                    renderFaqItem(
+                                        item,
+                                        idx + 1,
+                                        faqItems.length,
+                                        true
+                                    )
+                                )}
+                            </View>
+                        ) : null}
                     </View>
                 );
             }
@@ -1561,37 +1682,50 @@ const BriefPDFDocument = ({
 
                 if (!hasUploadPolicy && !hasAiasPolicy && !hasGuidance) {
                     return (
-                        <View>
-                            <Text
-                                style={pdfStyles.sectionTitle}
-                                minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}>
-                                AI Policy
-                            </Text>
+                        <PdfSectionStart title='AI Policy'>
                             <Text style={pdfStyles.textMuted}>
                                 Content not yet added for this section
                             </Text>
-                        </View>
+                        </PdfSectionStart>
                     );
                 }
 
-                return (
-                    <View>
-                        <Text
-                            style={pdfStyles.sectionTitle}
-                            minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}>
-                            AI Policy
+                const aiPolicyParts: React.ReactNode[] = [];
+
+                if (hasUploadPolicy && aiPolicyDocument) {
+                    aiPolicyParts.push(
+                        <Text key='upload' style={pdfStyles.text}>
+                            Policy document: {aiPolicyDocument.fileName}
                         </Text>
-                        {hasUploadPolicy && aiPolicyDocument ? (
+                    );
+                }
+
+                if (hasAiasPolicy) {
+                    const [firstLevel, ...restLevels] = selectedLevels;
+                    aiPolicyParts.push(
+                        <View key='aias-intro' style={{ marginTop: 8 }}>
                             <Text style={pdfStyles.text}>
-                                Policy document: {aiPolicyDocument.fileName}
+                                {AIAS_POLICY.name} — permitted levels:
                             </Text>
-                        ) : null}
-                        {hasAiasPolicy ? (
-                            <View style={{ marginTop: 8 }}>
-                                <Text style={pdfStyles.text}>
-                                    {AIAS_POLICY.name} — permitted levels:
+                            <View
+                                style={{
+                                    marginTop: 8,
+                                    padding: PDF_BOX_PAD,
+                                    border: `1 solid ${PDF_BORDER}`
+                                }}>
+                                <Text style={{ fontWeight: 'normal' }}>
+                                    Level {firstLevel.level}: {firstLevel.name}
                                 </Text>
-                                {selectedLevels.map((level) => (
+                                <Text style={pdfStyles.text}>
+                                    {firstLevel.studentGuidance}
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                    if (restLevels.length > 0) {
+                        aiPolicyParts.push(
+                            <View key='aias-rest' style={{ marginTop: 8 }}>
+                                {restLevels.map((level) => (
                                     <View
                                         key={level.level}
                                         style={{
@@ -1608,34 +1742,54 @@ const BriefPDFDocument = ({
                                     </View>
                                 ))}
                             </View>
-                        ) : null}
-                        {hasGuidance ? (
-                            <View
-                                style={{
-                                    marginTop: 10,
-                                    padding: PDF_BOX_PAD,
-                                    border: `1 solid ${PDF_BORDER}`
-                                }}>
-                                <Text style={{ fontWeight: 'normal' }}>
-                                    Guidance for this assessment
-                                </Text>
-                                <Text style={pdfStyles.text}>
-                                    {parseContentWithLinks(
-                                        aiPolicy.assessmentGuidance
-                                    )}
-                                </Text>
-                            </View>
-                        ) : null}
-                        {aiPolicy.usageLogEnabled ? (
-                            <Text
-                                style={{
-                                    ...pdfStyles.textMuted,
-                                    marginTop: 8
-                                }}>
-                                Students may complete an AI Usage Log for this
-                                assessment.
+                        );
+                    }
+                }
+
+                if (hasGuidance) {
+                    aiPolicyParts.push(
+                        <View
+                            key='guidance'
+                            style={{
+                                marginTop: 10,
+                                padding: PDF_BOX_PAD,
+                                border: `1 solid ${PDF_BORDER}`
+                            }}>
+                            <Text style={{ fontWeight: 'normal' }}>
+                                Guidance for this assessment
                             </Text>
-                        ) : null}
+                            <Text style={pdfStyles.text}>
+                                {parseContentWithLinks(
+                                    aiPolicy.assessmentGuidance
+                                )}
+                            </Text>
+                        </View>
+                    );
+                }
+
+                if (aiPolicy.usageLogEnabled) {
+                    aiPolicyParts.push(
+                        <Text
+                            key='usage-log'
+                            style={{
+                                ...pdfStyles.textMuted,
+                                marginTop: 8
+                            }}>
+                            Students may complete an AI Usage Log for this
+                            assessment.
+                        </Text>
+                    );
+                }
+
+                const [firstAiPolicyPart, ...restAiPolicyParts] =
+                    aiPolicyParts;
+
+                return (
+                    <View>
+                        <PdfSectionStart title='AI Policy'>
+                            {firstAiPolicyPart}
+                        </PdfSectionStart>
+                        {restAiPolicyParts}
                     </View>
                 );
             }
@@ -1910,13 +2064,15 @@ function SubmissionFormFieldPdfRow({
     idx,
     totalFields,
     values = {},
-    programmeLabel = 'the programme'
+    programmeLabel = 'the programme',
+    unbreakable = true
 }: {
     field: SubmissionFormFieldDef;
     idx: number;
     totalFields: number;
     values?: SubmissionFormValues;
     programmeLabel?: string;
+    unbreakable?: boolean;
 }) {
     const isDeclarationField =
         field.title.trim().toLowerCase() === 'declaration';
@@ -1932,7 +2088,7 @@ function SubmissionFormFieldPdfRow({
     return (
         <View
             key={idx}
-            wrap={false}
+            {...pdfRowWrapProps(unbreakable)}
             style={[
                 pdfStyles.formField,
                 {
@@ -1978,12 +2134,14 @@ function ChecklistItemPdfRow({
     item,
     idx,
     totalItems,
-    checkedItems = {}
+    checkedItems = {},
+    unbreakable = true
 }: {
     item: string;
     idx: number;
     totalItems: number;
     checkedItems?: Record<string, boolean>;
+    unbreakable?: boolean;
 }) {
     const itemKey = `checklist-${idx}-${item}`;
     const isChecked = Boolean(checkedItems[itemKey]);
@@ -1991,7 +2149,7 @@ function ChecklistItemPdfRow({
     return (
         <View
             key={idx}
-            wrap={false}
+            {...pdfRowWrapProps(unbreakable)}
             style={[
                 pdfStyles.checklistItem,
                 {
@@ -2035,47 +2193,58 @@ const ChecklistPDFDocument = ({
             <Document>
                 <Page size='A4' style={pdfStyles.page}>
                     <View style={pdfStyles.documentCard}>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            Submission Checklist
-                        </Text>
-                        <Text style={pdfStyles.text}>
-                            Content not yet added for this section
-                        </Text>
+                        <PdfSectionStart title='Submission Checklist'>
+                            <Text style={pdfStyles.text}>
+                                Content not yet added for this section
+                            </Text>
+                        </PdfSectionStart>
                     </View>
                 </Page>
             </Document>
         );
     }
 
+    const checklistItems = content.checklistItems as string[];
+    const [firstItem, ...restItems] = checklistItems;
+
     return (
         <Document>
             <Page size='A4' style={pdfStyles.page}>
                 <View style={pdfStyles.documentCard}>
-                    <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                        Submission Checklist
-                    </Text>
-                    <View
-                        style={{
-                            border: `1 solid ${PDF_BORDER}`,
-                            padding: PDF_BOX_PAD
-                        }}
-                    >
-                    {content.checklistItems.map((item: string, idx: number) => (
-                        <ChecklistItemPdfRow
-                            key={idx}
-                            item={item}
-                            idx={idx}
-                            totalItems={content.checklistItems.length}
-                            checkedItems={checkedItems}
-                        />
-                    ))}
-                    </View>
+                    <PdfSectionStart title='Submission Checklist'>
+                        <View
+                            style={{
+                                border: `1 solid ${PDF_BORDER}`,
+                                padding: PDF_BOX_PAD
+                            }}>
+                            <ChecklistItemPdfRow
+                                item={firstItem}
+                                idx={0}
+                                totalItems={checklistItems.length}
+                                checkedItems={checkedItems}
+                                unbreakable={false}
+                            />
+                        </View>
+                    </PdfSectionStart>
+                    {restItems.length > 0 ? (
+                        <View
+                            style={{
+                                borderLeft: `1 solid ${PDF_BORDER}`,
+                                borderRight: `1 solid ${PDF_BORDER}`,
+                                borderBottom: `1 solid ${PDF_BORDER}`,
+                                padding: PDF_BOX_PAD
+                            }}>
+                            {restItems.map((item: string, idx: number) => (
+                                <ChecklistItemPdfRow
+                                    key={idx + 1}
+                                    item={item}
+                                    idx={idx + 1}
+                                    totalItems={checklistItems.length}
+                                    checkedItems={checkedItems}
+                                />
+                            ))}
+                        </View>
+                    ) : null}
                 </View>
             </Page>
         </Document>
@@ -2099,51 +2268,60 @@ const SubmissionFormPDFDocument = ({
             <Document>
                 <Page size='A4' style={pdfStyles.page}>
                     <View style={pdfStyles.documentCard}>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            Submission Form
-                        </Text>
-                        <Text style={pdfStyles.text}>
-                            Content not yet added for this section
-                        </Text>
+                        <PdfSectionStart title='Submission Form'>
+                            <Text style={pdfStyles.text}>
+                                Content not yet added for this section
+                            </Text>
+                        </PdfSectionStart>
                     </View>
                 </Page>
             </Document>
         );
     }
 
+    const formFields = content.submissionFormFields as SubmissionFormFieldDef[];
+    const [firstField, ...restFields] = formFields;
+
     return (
         <Document>
             <Page size='A4' style={pdfStyles.page}>
                 <View style={pdfStyles.documentCard}>
-                    <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                        Submission Form
-                    </Text>
-                    <View
-                        style={{
-                            border: `1 solid ${PDF_BORDER}`,
-                            padding: PDF_BOX_PAD
-                        }}
-                    >
-                    {content.submissionFormFields.map(
-                        (field: SubmissionFormFieldDef, idx: number) => (
+                    <PdfSectionStart title='Submission Form'>
+                        <View
+                            style={{
+                                border: `1 solid ${PDF_BORDER}`,
+                                padding: PDF_BOX_PAD
+                            }}>
                             <SubmissionFormFieldPdfRow
-                                key={idx}
-                                field={field}
-                                idx={idx}
-                                totalFields={
-                                    content.submissionFormFields.length
-                                }
+                                field={firstField}
+                                idx={0}
+                                totalFields={formFields.length}
                                 values={submissionFormValues}
+                                unbreakable={false}
                             />
-                        )
-                    )}
-                    </View>
+                        </View>
+                    </PdfSectionStart>
+                    {restFields.length > 0 ? (
+                        <View
+                            style={{
+                                borderLeft: `1 solid ${PDF_BORDER}`,
+                                borderRight: `1 solid ${PDF_BORDER}`,
+                                borderBottom: `1 solid ${PDF_BORDER}`,
+                                padding: PDF_BOX_PAD
+                            }}>
+                            {restFields.map(
+                                (field: SubmissionFormFieldDef, idx: number) => (
+                                    <SubmissionFormFieldPdfRow
+                                        key={idx + 1}
+                                        field={field}
+                                        idx={idx + 1}
+                                        totalFields={formFields.length}
+                                        values={submissionFormValues}
+                                    />
+                                )
+                            )}
+                        </View>
+                    ) : null}
                 </View>
             </Page>
         </Document>
@@ -2170,65 +2348,101 @@ const ChecklistAndSubmissionFormPDFDocument = ({
         <Document>
             <Page size='A4' style={pdfStyles.page}>
                 <View style={pdfStyles.documentCard}>
-                {hasChecklist && (
-                    <View style={{ marginBottom: PDF_SECTION_DIVIDER_GAP }}>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            Submission Checklist
-                        </Text>
-                        <View
-                            style={{
-                                border: `1 solid ${PDF_BORDER}`,
-                                padding: PDF_BOX_PAD
-                            }}>
-                            {content.checklistItems.map(
-                                (item: string, idx: number) => (
+                {hasChecklist && (() => {
+                    const checklistItems = content.checklistItems as string[];
+                    const [firstItem, ...restItems] = checklistItems;
+                    return (
+                        <View style={{ marginBottom: PDF_SECTION_DIVIDER_GAP }}>
+                            <PdfSectionStart title='Submission Checklist'>
+                                <View
+                                    style={{
+                                        border: `1 solid ${PDF_BORDER}`,
+                                        padding: PDF_BOX_PAD
+                                    }}>
                                     <ChecklistItemPdfRow
-                                        key={idx}
-                                        item={item}
-                                        idx={idx}
-                                        totalItems={
-                                            content.checklistItems.length
-                                        }
+                                        item={firstItem}
+                                        idx={0}
+                                        totalItems={checklistItems.length}
                                         checkedItems={checkedItems}
+                                        unbreakable={false}
                                     />
-                                )
-                            )}
+                                </View>
+                            </PdfSectionStart>
+                            {restItems.length > 0 ? (
+                                <View
+                                    style={{
+                                        borderLeft: `1 solid ${PDF_BORDER}`,
+                                        borderRight: `1 solid ${PDF_BORDER}`,
+                                        borderBottom: `1 solid ${PDF_BORDER}`,
+                                        padding: PDF_BOX_PAD
+                                    }}>
+                                    {restItems.map(
+                                        (item: string, idx: number) => (
+                                            <ChecklistItemPdfRow
+                                                key={idx + 1}
+                                                item={item}
+                                                idx={idx + 1}
+                                                totalItems={
+                                                    checklistItems.length
+                                                }
+                                                checkedItems={checkedItems}
+                                            />
+                                        )
+                                    )}
+                                </View>
+                            ) : null}
                         </View>
-                    </View>
-                )}
+                    );
+                })()}
 
-                {hasSubmissionForm && (
-                    <View>
-                        <Text
-                        style={pdfStyles.sectionTitle}
-                        minPresenceAhead={PDF_HEADING_MIN_PRESENCE_AHEAD}
-                    >
-                            Submission Form
-                        </Text>
-                        <View
-                            style={{
-                                border: `1 solid ${PDF_BORDER}`,
-                                padding: PDF_BOX_PAD
-                            }}>
-                            {content.submissionFormFields.map(
-                                (field: SubmissionFormFieldDef, idx: number) => (
+                {hasSubmissionForm && (() => {
+                    const formFields =
+                        content.submissionFormFields as SubmissionFormFieldDef[];
+                    const [firstField, ...restFields] = formFields;
+                    return (
+                        <View>
+                            <PdfSectionStart title='Submission Form'>
+                                <View
+                                    style={{
+                                        border: `1 solid ${PDF_BORDER}`,
+                                        padding: PDF_BOX_PAD
+                                    }}>
                                     <SubmissionFormFieldPdfRow
-                                        key={idx}
-                                        field={field}
-                                        idx={idx}
-                                        totalFields={
-                                            content.submissionFormFields.length
-                                        }
+                                        field={firstField}
+                                        idx={0}
+                                        totalFields={formFields.length}
                                         values={submissionFormValues}
+                                        unbreakable={false}
                                     />
-                                )
-                            )}
+                                </View>
+                            </PdfSectionStart>
+                            {restFields.length > 0 ? (
+                                <View
+                                    style={{
+                                        borderLeft: `1 solid ${PDF_BORDER}`,
+                                        borderRight: `1 solid ${PDF_BORDER}`,
+                                        borderBottom: `1 solid ${PDF_BORDER}`,
+                                        padding: PDF_BOX_PAD
+                                    }}>
+                                    {restFields.map(
+                                        (
+                                            field: SubmissionFormFieldDef,
+                                            idx: number
+                                        ) => (
+                                            <SubmissionFormFieldPdfRow
+                                                key={idx + 1}
+                                                field={field}
+                                                idx={idx + 1}
+                                                totalFields={formFields.length}
+                                                values={submissionFormValues}
+                                            />
+                                        )
+                                    )}
+                                </View>
+                            ) : null}
                         </View>
-                    </View>
-                )}
+                    );
+                })()}
 
                 {!hasChecklist && !hasSubmissionForm && (
                     <Text style={pdfStyles.text}>
@@ -2255,19 +2469,46 @@ async function openPDFInNewTab(
     }, 1000);
 }
 
-// Export function to generate and open Checklist PDF in new tab
-export async function generateChecklistPDF(
+export async function generateChecklistPDFBlob(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     content: any,
     options: BriefPrintFormOptions = {}
-): Promise<void> {
+): Promise<Blob> {
     const doc = (
         <ChecklistPDFDocument
             content={content}
             checkedItems={options.checkedItems}
         />
     );
-    await openPDFInNewTab(doc);
+    return pdf(doc).toBlob();
+}
+
+export async function generateSubmissionFormPDFBlob(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: any,
+    options: BriefPrintFormOptions = {}
+): Promise<Blob> {
+    const doc = (
+        <SubmissionFormPDFDocument
+            content={content}
+            submissionFormValues={options.submissionFormValues}
+        />
+    );
+    return pdf(doc).toBlob();
+}
+
+// Export function to generate and open Checklist PDF in new tab
+export async function generateChecklistPDF(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: any,
+    options: BriefPrintFormOptions = {}
+): Promise<void> {
+    await openPDFInNewTab(
+        <ChecklistPDFDocument
+            content={content}
+            checkedItems={options.checkedItems}
+        />
+    );
 }
 
 // Export function to generate and open Submission Form PDF in new tab
@@ -2276,13 +2517,27 @@ export async function generateSubmissionFormPDF(
     content: any,
     options: BriefPrintFormOptions = {}
 ): Promise<void> {
-    const doc = (
+    await openPDFInNewTab(
         <SubmissionFormPDFDocument
             content={content}
             submissionFormValues={options.submissionFormValues}
         />
     );
-    await openPDFInNewTab(doc);
+}
+
+export async function generateChecklistAndSubmissionFormPDFBlob(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: any,
+    options: BriefPrintFormOptions = {}
+): Promise<Blob> {
+    const doc = (
+        <ChecklistAndSubmissionFormPDFDocument
+            content={content}
+            submissionFormValues={options.submissionFormValues}
+            checkedItems={options.checkedItems}
+        />
+    );
+    return pdf(doc).toBlob();
 }
 
 // Export function to generate and open Checklist and Submission Form PDF in new tab
@@ -2291,12 +2546,11 @@ export async function generateChecklistAndSubmissionFormPDF(
     content: any,
     options: BriefPrintFormOptions = {}
 ): Promise<void> {
-    const doc = (
+    await openPDFInNewTab(
         <ChecklistAndSubmissionFormPDFDocument
             content={content}
             submissionFormValues={options.submissionFormValues}
             checkedItems={options.checkedItems}
         />
     );
-    await openPDFInNewTab(doc);
 }

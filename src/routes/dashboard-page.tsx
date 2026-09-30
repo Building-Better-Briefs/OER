@@ -161,7 +161,7 @@ export function DashboardPage() {
                                             to={OFFLINE_ROUTES.briefBuilder(
                                                 b.id
                                             )}>
-                                            Edit
+                                            Open
                                         </Link>
                                     </Button>
                                     <Button
@@ -171,7 +171,7 @@ export function DashboardPage() {
                                             const copy = await duplicateBrief(b);
                                             await refresh();
                                             toast.success('Duplicated');
-                                            window.location.hash = `#${OFFLINE_ROUTES.briefBuilder(copy.id)}`;
+                                            window.location.hash = `#${OFFLINE_ROUTES.briefEdit(copy.id)}`;
                                         }}>
                                         Duplicate
                                     </Button>

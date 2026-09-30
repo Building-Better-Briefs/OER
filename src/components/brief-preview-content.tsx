@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Fragment, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import Link from '@/components/app-link';
-import { ExternalLink, Printer, Settings2, Download } from 'lucide-react';
+import { ExternalLink, Settings2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBriefViewerOptional } from '@/viewer-stubs/brief-viewer-context';
 import { useBriefBuilderOptional } from '@/builder/brief-builder-context';
@@ -328,6 +328,46 @@ export function BriefPreviewContent({
         [focusChunksEnabled, getPassthroughFocusClass]
     );
 
+    const scrollToBriefSectionById = useCallback(
+        (sectionId: string) => {
+            const sectionElement =
+                sectionRefs.current[sectionId] ??
+                document.getElementById(sectionId);
+            if (!sectionElement) {
+                return;
+            }
+
+            const scrollOffset = isViewer ? 80 : 24;
+            const panelContainer = contentRootRef.current?.closest(
+                '[data-panel-scroll-container]'
+            ) as HTMLElement | null;
+
+            if (panelContainer) {
+                const containerRect = panelContainer.getBoundingClientRect();
+                const elRect = sectionElement.getBoundingClientRect();
+                const top =
+                    panelContainer.scrollTop +
+                    (elRect.top - containerRect.top) -
+                    scrollOffset;
+                panelContainer.scrollTo({
+                    top: Math.max(0, top),
+                    behavior: 'smooth'
+                });
+                return;
+            }
+
+            const top =
+                window.scrollY +
+                sectionElement.getBoundingClientRect().top -
+                scrollOffset;
+            window.scrollTo({
+                top: Math.max(0, top),
+                behavior: 'smooth'
+            });
+        },
+        [isViewer]
+    );
+
     // React Compiler is not enabled (see cleanup plan audit), so this has
     // no runtime effect today; it's the to-do list for when it is.
     const checklistItemKeys = useMemo(
@@ -600,17 +640,6 @@ export function BriefPreviewContent({
         };
     });
 
-    // Check if both submission form and checklist are enabled
-    const hasChecklistEnabled = sections.some(
-        (section) =>
-            section.id === 'submission-checklist' &&
-            isBriefSectionEnabled(section)
-    );
-    const hasSubmissionFormEnabled = sections.some(
-        (section) =>
-            section.id === 'submission-form' && isBriefSectionEnabled(section)
-    );
-    const bothEnabled = hasChecklistEnabled && hasSubmissionFormEnabled;
     const effectiveViewerSlug = viewerSlug ?? builderContext?.viewerSlug;
     const showSelfAssessmentLink = Boolean(effectiveViewerSlug) && (
         builderContext
@@ -817,14 +846,30 @@ export function BriefPreviewContent({
                                         <div
                                             className={cn('font-normal h-full flex flex-col justify-between', 'p-4 sm:py-4 sm:px-4', 'max-sm:py-2 max-sm:px-3 max-sm:gap-2', forceCompact && 'py-2 px-3 gap-2')}>
                                             <p>Learning Outcomes Assessed</p>
-                                            <p
-                                                className={cn('font-light', 'text-sm', 'max-sm:text-[10px]', forceCompact && 'text-[10px]')}>
-                                                <a
-                                                    href='#rubric'
-                                                    className='text-foreground hover:text-brand underline underline-offset-2 decoration-1 transition-colors'>
-                                                    (See Rubric Below)↓
-                                                </a>
-                                            </p>
+                                            {enabledSectionIds.includes(
+                                                'rubric'
+                                            ) ? (
+                                                <p
+                                                    className={cn(
+                                                        'font-light',
+                                                        'text-sm',
+                                                        'max-sm:text-[10px]',
+                                                        forceCompact &&
+                                                            'text-[10px]'
+                                                    )}>
+                                                    <a
+                                                        href='#rubric'
+                                                        className='text-foreground hover:text-brand underline underline-offset-2 decoration-1 transition-colors'
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+                                                            scrollToBriefSectionById(
+                                                                'rubric'
+                                                            );
+                                                        }}>
+                                                        (See Rubric Below)↓
+                                                    </a>
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
                                     <div>
@@ -2187,7 +2232,6 @@ export function BriefPreviewContent({
                             )}
                         </div>
                         {renderSubmissionFormActionBar({
-                            showPrint: true,
                             showSelfAssessment:
                                 selfAssessmentLinkBesideSubmissionForm
                         })}
@@ -2224,32 +2268,6 @@ export function BriefPreviewContent({
                                 )}>
                                 Submission Checklist
                             </h2>
-                            {hasChecklistEnabled && !bothEnabled && (
-                                <div
-                                    className={cn('flex items-center justify-end', 'mb-3', 'max-sm:text-xs max-sm:mb-2', forceCompact && 'text-xs mb-2')}>
-                                    <Button
-                                        onClick={handlePrintChecklist}
-                                        variant='outline'
-                                        size='sm'
-                                        className={cn('cursor-pointer', '', 'max-sm:text-xs max-sm:px-1.5', forceCompact && 'text-xs px-1.5')}>
-                                        <Printer
-                                            className={
-                                                cn('h-3.5 w-3.5 mr-1.5', 'max-sm:h-2.5 max-sm:w-2.5', forceCompact && 'h-2.5 w-2.5')
-                                            }
-                                        />
-                                        <span
-                                            className={
-                                                'hidden sm:inline'
-                                            }>
-                                            Print Checklist
-                                        </span>
-                                        <span
-                                            className='sm:hidden'>
-                                            Print
-                                        </span>
-                                    </Button>
-                                </div>
-                            )}
                         </div>
                         <div
                             id='printable-checklist'
@@ -2525,11 +2543,10 @@ export function BriefPreviewContent({
         ) : null;
 
     const renderSubmissionFormActionBar = (options: {
-        showPrint: boolean;
         showSelfAssessment?: boolean;
     }) => {
         const showSelfAssessment = options.showSelfAssessment ?? false;
-        if (!options.showPrint && !showSelfAssessment) {
+        if (!showSelfAssessment) {
             return null;
         }
 
@@ -2541,39 +2558,7 @@ export function BriefPreviewContent({
                     'max-sm:mt-2',
                     forceCompact && 'mt-2'
                 )}>
-                {options.showPrint ? (
-                    <Button
-                        onClick={
-                            bothEnabled
-                                ? handlePrintChecklistAndSubmissionForm
-                                : handlePrintSubmissionForm
-                        }
-                        variant='outline'
-                        size='sm'
-                        className={cn(
-                            'cursor-pointer',
-                            '',
-                            'max-sm:text-xs max-sm:px-1.5',
-                            forceCompact && 'text-xs px-1.5'
-                        )}>
-                        <Printer
-                            className={cn(
-                                'h-3.5 w-3.5 mr-1.5',
-                                'max-sm:h-2.5 max-sm:w-2.5',
-                                forceCompact && 'h-2.5 w-2.5'
-                            )}
-                        />
-                        <span className='hidden sm:inline'>
-                            {bothEnabled && forceCompact
-                                ? 'Print'
-                                : bothEnabled
-                                  ? 'Print Checklist and Submission Form'
-                                  : 'Print Submission Form'}
-                        </span>
-                        <span className='sm:hidden'>Print</span>
-                    </Button>
-                ) : null}
-                {showSelfAssessment ? renderSelfAssessmentLinkButton() : null}
+                {renderSelfAssessmentLinkButton()}
             </div>
         );
     };
