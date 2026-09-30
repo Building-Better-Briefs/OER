@@ -3,6 +3,7 @@ import { Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BuildingBetterBriefsReadMoreSheet } from '@/components/building-better-briefs-read-more-sheet';
+import { PwaInstallBanner } from '@/components/pwa-install-banner';
 import {
     Dialog,
     DialogContent,
@@ -118,6 +119,7 @@ export function DashboardPage() {
                         </label>
                     </Button>
                 </div>
+                <PwaInstallBanner />
             </header>
 
             <main className='mx-auto w-full max-w-[80rem]'>

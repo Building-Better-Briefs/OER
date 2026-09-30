@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { OfflineAppLayout } from '@/components/offline-app-layout';
 import './offline.css';
+import '@/lib/pwa-install-client';
 import { HomePage } from '@/routes/home-page';
 import { DashboardPage } from '@/routes/dashboard-page';
 import { OFFLINE_ROUTES } from '@/lib/offline-routes';

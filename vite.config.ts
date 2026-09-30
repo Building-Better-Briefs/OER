@@ -45,7 +45,9 @@ export default defineConfig({
                 'logo.svg',
                 'logo-light.svg',
                 'logo-dark.svg',
-                'BuildingBetterBriefs.pdf'
+                'BuildingBetterBriefs.pdf',
+                'pwa/icon-192.png',
+                'pwa/icon-512.png'
             ],
             manifest: {
                 name: 'Assessment Brief Builder (Offline)',
@@ -54,13 +56,19 @@ export default defineConfig({
                 theme_color: '#ffffff',
                 background_color: '#ffffff',
                 display: 'standalone',
-                start_url: './',
+                start_url: './#/dashboard',
                 scope: './',
                 icons: [
                     {
-                        src: 'logo.svg',
+                        src: 'pwa/icon-192.png',
+                        sizes: '192x192',
+                        type: 'image/png',
+                        purpose: 'any'
+                    },
+                    {
+                        src: 'pwa/icon-512.png',
                         sizes: '512x512',
-                        type: 'image/svg+xml',
+                        type: 'image/png',
                         purpose: 'any'
                     }
                 ]
@@ -85,7 +93,7 @@ export default defineConfig({
     define: {
         'process.env.NEXT_PUBLIC_INSTITUTION_NAME': JSON.stringify('IADT'),
         'process.env.NEXT_PUBLIC_APP_NAME': JSON.stringify(
-            'Assessment Brief Builder (Offline)'
+            'Assessment Brief Builder'
         ),
         'process.env.NEXT_PUBLIC_LOGO_URL_LIGHT': JSON.stringify('/logo-light.svg'),
         'process.env.NEXT_PUBLIC_LOGO_URL_DARK': JSON.stringify('/logo-dark.svg'),
