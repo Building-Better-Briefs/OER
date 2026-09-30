@@ -27,3 +27,6 @@ pnpm-debug.log*
 
 # Vite / Vitest
 coverage/
+
+# Upstream sync artifact (pnpm copy-upstream)
+copied-manifest.json
