@@ -55,10 +55,6 @@ function AssignmentSettingRow({
 }
 
 type BuilderAssignmentSettingsProps = {
-    showRequireNotebook: boolean;
-    requireNotebook: boolean;
-    onRequireNotebookChange: (checked: boolean) => void;
-    onHideRequireNotebook?: () => void;
     showRequireLogs: boolean;
     requireLogs: boolean;
     assignmentLogs: AssignmentLogDefinition[];
@@ -72,10 +68,6 @@ type BuilderAssignmentSettingsProps = {
 };
 
 export function BuilderAssignmentSettings({
-    showRequireNotebook,
-    requireNotebook,
-    onRequireNotebookChange,
-    onHideRequireNotebook,
     showRequireLogs,
     requireLogs,
     assignmentLogs,
@@ -87,17 +79,26 @@ export function BuilderAssignmentSettings({
     onRequireAiLogChange,
     onHideRequireAiLog
 }: BuilderAssignmentSettingsProps) {
-    if (!showRequireNotebook && !showRequireLogs && !showRequireAiLog) {
+    if (!showRequireLogs && !showRequireAiLog) {
         return null;
     }
 
     return (
         <div className='space-y-3 border p-3 bg-card'>
-            <Label className='font-normal text-sm'>Assignment settings</Label>
+            {/* <Label className='font-normal text-sm'>Log settings</Label> */}
             <div className='space-y-3'>
+            {showRequireAiLog ? (
+                    <AssignmentSettingRow
+                        label='AI Log'
+                        description='Students complete a structured AI usage log as a submission.'
+                        checked={requireAiLog}
+                        onCheckedChange={onRequireAiLogChange}
+                        onHide={onHideRequireAiLog}
+                    />
+                ) : null}
                 {showRequireLogs ? (
                     <AssignmentSettingRow
-                        label='Logs'
+                        label='Custom Logs'
                         description='Students complete structured logs as a submission.'
                         checked={requireLogs}
                         onCheckedChange={onRequireLogsChange}
@@ -111,24 +112,7 @@ export function BuilderAssignmentSettings({
                         ) : null}
                     </AssignmentSettingRow>
                 ) : null}
-                {showRequireAiLog ? (
-                    <AssignmentSettingRow
-                        label='AI Log'
-                        description='Students complete a structured AI usage log as a submission.'
-                        checked={requireAiLog}
-                        onCheckedChange={onRequireAiLogChange}
-                        onHide={onHideRequireAiLog}
-                    />
-                ) : null}
-                {showRequireNotebook ? (
-                    <AssignmentSettingRow
-                        label='Require Notebook'
-                        description='This requires a student to create a notebook as a submission. Notebooks are Word styled documents that can be edited in real-time with other students.'
-                        checked={requireNotebook}
-                        onCheckedChange={onRequireNotebookChange}
-                        onHide={onHideRequireNotebook}
-                    />
-                ) : null}
+                
             </div>
             <p className='text-xs font-light text-muted-foreground'>
                 Students see this after the brief is published and saved.

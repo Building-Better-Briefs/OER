@@ -1,5 +1,4 @@
 export const ASSIGNMENT_SETTING_IDS = [
-    'require-notebook',
     'require-logs',
     'require-ai-log'
 ] as const;
@@ -8,7 +7,6 @@ export type AssignmentSettingId = (typeof ASSIGNMENT_SETTING_IDS)[number];
 
 export const ASSIGNMENT_SETTING_LABELS: Record<AssignmentSettingId, string> =
     {
-        'require-notebook': 'Require Notebook',
         'require-logs': 'Logs',
         'require-ai-log': 'AI Log'
     };
@@ -55,9 +53,9 @@ export function normalizeHiddenAssignmentSettings(
 }
 
 export function isRequireNotebookSettingHidden(
-    hiddenSettings: string[] | undefined | null
+    _hiddenSettings?: string[] | undefined | null
 ): boolean {
-    return !isAssignmentSettingVisible('require-notebook', hiddenSettings);
+    return true;
 }
 
 export function isRequireLogsSettingHidden(

@@ -1,3 +1,5 @@
+import { richTextToPlainText } from '@/lib/rich-text-utils';
+
 export type AiPolicySource = 'upload' | 'aias' | null;
 
 export type AiPolicyConfig = {
@@ -70,7 +72,7 @@ export const AIAS_LEVELS: AiasLevel[] = [
 
 export function createDefaultAiPolicy(): AiPolicyConfig {
     return {
-        source: null,
+        source: 'aias',
         aiasLevels: [],
         usageLogEnabled: false,
         policyRationale: '',
@@ -107,10 +109,7 @@ export function parseAiPolicy(content: unknown): AiPolicyConfig {
     }
 
     const policy = raw as Record<string, unknown>;
-    const source =
-        policy.source === 'upload' || policy.source === 'aias'
-            ? policy.source
-            : null;
+    const source = policy.source === 'upload' ? 'upload' : 'aias';
 
     return {
         source,
@@ -129,4 +128,8 @@ export function parseAiPolicy(content: unknown): AiPolicyConfig {
 
 export function getAiasLevel(level: number): AiasLevel | undefined {
     return AIAS_LEVELS.find((entry) => entry.level === level);
+}
+
+export function hasAssessmentGuidance(value: unknown): boolean {
+    return richTextToPlainText(value).trim().length > 0;
 }

@@ -29,7 +29,7 @@ export const BUILDING_BETTER_BRIEFS_BLOCKS: BriefsContentBlock[] = [
     },
     {
         id: 'oer',
-        title: 'OER description',
+        title: 'Description',
         paragraphs: [
             'An open educational resource for higher education staff who design assessment briefs. It provides a structured approach to writing clear, consistent and accessible briefs, aligning learning outcomes, assessment tasks and assessment criteria. It includes reusable guidance and a brief template that can be adapted across disciplines.'
         ]

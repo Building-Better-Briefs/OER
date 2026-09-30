@@ -7,6 +7,7 @@ import {
     AIAS_LEVELS,
     AIAS_POLICY,
     getAiasLevel,
+    hasAssessmentGuidance,
     parseAiPolicy,
     type AiPolicyConfig
 } from '@/lib/ai-policies';
@@ -34,7 +35,7 @@ function hasAiPolicyContent(
     if (aiPolicy.source === 'aias') {
         return aiPolicy.aiasLevels.length > 0;
     }
-    return Boolean(aiPolicy.assessmentGuidance);
+    return hasAssessmentGuidance(aiPolicy.assessmentGuidance);
 }
 
 export function BriefAiPolicyPreview({
@@ -170,7 +171,7 @@ export function BriefAiPolicyPreview({
                 </div>
             ) : null}
 
-            {aiPolicy.assessmentGuidance ? (
+            {hasAssessmentGuidance(aiPolicy.assessmentGuidance) ? (
                 <div className='mb-6'>
                     <p
                         className={cn(

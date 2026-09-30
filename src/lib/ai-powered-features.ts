@@ -8,7 +8,7 @@ export const AI_SETTINGS_ENABLE_HINT =
     'AI-assisted features are off. Enable them in Settings.';
 
 export const AI_SETTINGS_SAVE_BEFORE_ENABLE_HINT =
-    'AI-assisted features are off. Save your brief first, then enable them in Settings.';
+    'AI-assisted features are off.';
 
 /** Tailwind classes — colour source is --ai-accent in src/styles/tokens.css */
 export const AI_ACCENT_TEXT_CLASS = 'text-ai-accent';

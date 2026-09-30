@@ -45,11 +45,3 @@ export function hasEnabledBriefSection(sections: BriefSectionLike[]): boolean {
     return sections.some((section) => isBriefSectionEnabled(section));
 }
 
-export function isExampleFeedbackSectionEnabled(
-    sections: BriefSectionLike[]
-): boolean {
-    return sections.some(
-        (section) =>
-            section.id === 'example-feedback' && isBriefSectionEnabled(section)
-    );
-}

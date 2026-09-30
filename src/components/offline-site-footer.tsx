@@ -22,7 +22,7 @@ export function OfflineSiteFooter() {
                     className='underline underline-offset-2 hover:text-foreground'>
                     GPL-3.0
                 </a>
-                . ©️ 2026 Stefan Paz Berrios and Mohammed Cherbatji.
+                . ©️ {new Date().getFullYear()} Stefan Paz Berrios and Mohammed Cherbatji.
             </p>
         </footer>
     );

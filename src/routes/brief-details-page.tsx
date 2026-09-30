@@ -10,14 +10,19 @@ import { Label } from '@/components/ui/label';
 import {
     createBrief,
     getBrief,
+    INSTITUTIONAL_POLICY_LABEL_MAX,
+    INSTITUTIONAL_POLICY_URL_MAX,
     metadataFromForm,
     metadataToForm,
     writeBrief,
     type LocalBriefRecord
 } from '@/lib/brief-store';
-import { IndividualGroupPresetTabs } from '@/components/individual-group-field';
+import { IndividualGroupField } from '@/components/individual-group-field';
+import { getInstitutionAiPolicy } from '@/lib/institution-config';
 import { toast } from 'sonner';
 import { OFFLINE_ROUTES } from '@/lib/offline-routes';
+
+const institutionalPolicyUrlPattern = /^https?:\/\//i;
 
 const schema = z
     .object({
@@ -27,7 +32,19 @@ const schema = z
         lecturer: z.string().trim().min(1, 'Lecturer is required'),
         startDate: z.string().min(1, 'Start date is required'),
         submissionDate: z.string().min(1, 'Submission date is required'),
-        individualGroup: z.string().trim().min(1, 'Required')
+        individualGroup: z.string().trim().min(1, 'Required'),
+        institutionalPolicyLabel: z
+            .string()
+            .max(
+                INSTITUTIONAL_POLICY_LABEL_MAX,
+                `Link text must be at most ${INSTITUTIONAL_POLICY_LABEL_MAX} characters`
+            ),
+        institutionalPolicyUrl: z
+            .string()
+            .max(
+                INSTITUTIONAL_POLICY_URL_MAX,
+                `URL must be at most ${INSTITUTIONAL_POLICY_URL_MAX} characters`
+            )
     })
     .refine(
         (d) => {
@@ -36,9 +53,51 @@ const schema = z
             return !Number.isNaN(start.getTime()) && sub > start;
         },
         { message: 'Submission must be after start', path: ['submissionDate'] }
-    );
+    )
+    .superRefine((d, ctx) => {
+        const label = d.institutionalPolicyLabel.trim();
+        const url = d.institutionalPolicyUrl.trim();
+        if (!label && !url) {
+            return;
+        }
+        if (!label) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Link text is required when a URL is provided',
+                path: ['institutionalPolicyLabel']
+            });
+        }
+        if (!url) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'URL is required when link text is provided',
+                path: ['institutionalPolicyUrl']
+            });
+        } else if (!institutionalPolicyUrlPattern.test(url)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'URL must start with http:// or https://',
+                path: ['institutionalPolicyUrl']
+            });
+        }
+    });
 
 type FormValues = z.infer<typeof schema>;
+
+function createDefaultFormValues(): FormValues {
+    const institution = getInstitutionAiPolicy();
+    return {
+        programme: '',
+        module: '',
+        title: '',
+        lecturer: '',
+        startDate: '',
+        submissionDate: '',
+        individualGroup: 'Individual',
+        institutionalPolicyLabel: institution.label,
+        institutionalPolicyUrl: institution.url
+    };
+}
 
 export function BriefDetailsPage({ mode }: { mode: 'create' | 'edit' }) {
     const { id } = useParams();
@@ -48,15 +107,7 @@ export function BriefDetailsPage({ mode }: { mode: 'create' | 'edit' }) {
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
         mode: 'onChange',
-        defaultValues: {
-            programme: '',
-            module: '',
-            title: '',
-            lecturer: '',
-            startDate: '',
-            submissionDate: '',
-            individualGroup: 'Individual'
-        }
+        defaultValues: createDefaultFormValues()
     });
 
     useEffect(() => {
@@ -100,11 +151,21 @@ export function BriefDetailsPage({ mode }: { mode: 'create' | 'edit' }) {
         }
     });
 
+    const backHref =
+        mode === 'edit' && id
+            ? OFFLINE_ROUTES.briefBuilder(id)
+            : OFFLINE_ROUTES.dashboard;
+
+    const {
+        institutionalPolicyLabel: institutionalPolicyLabelError,
+        institutionalPolicyUrl: institutionalPolicyUrlError
+    } = form.formState.errors;
+
     return (
         <div className='flex flex-1 flex-col px-4 py-8 sm:px-6'>
             <div className='mx-auto max-w-2xl'>
                 <Button variant='ghost' className='mb-4' asChild>
-                    <Link to={OFFLINE_ROUTES.dashboard}>← Back</Link>
+                    <Link to={backHref}>← Back</Link>
                 </Button>
                 <h1 className='text-2xl font-extralight tracking-tight'>
                     {mode === 'create' ? 'Create brief' : 'Edit details'}
@@ -142,7 +203,7 @@ export function BriefDetailsPage({ mode }: { mode: 'create' | 'edit' }) {
                             {...form.register('submissionDate')}
                         />
                     </div>
-                    <IndividualGroupPresetTabs
+                    <IndividualGroupField
                         value={form.watch('individualGroup')}
                         onChange={(v) =>
                             form.setValue('individualGroup', v, {
@@ -150,6 +211,42 @@ export function BriefDetailsPage({ mode }: { mode: 'create' | 'edit' }) {
                             })
                         }
                     />
+                    <fieldset className='space-y-4 border-t border-foreground/10 pt-6'>
+                        <legend className='text-sm font-normal'>
+                            Institutional policy
+                        </legend>
+                        <p className='text-xs font-light text-muted-foreground'>
+                            Optional link shown in the student brief footer.
+                        </p>
+                        <div className='space-y-2'>
+                            <Label htmlFor='institutionalPolicyLabel'>
+                                Link text
+                            </Label>
+                            <Input
+                                id='institutionalPolicyLabel'
+                                {...form.register('institutionalPolicyLabel')}
+                            />
+                            {institutionalPolicyLabelError ? (
+                                <p className='text-sm text-destructive'>
+                                    {institutionalPolicyLabelError.message}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className='space-y-2'>
+                            <Label htmlFor='institutionalPolicyUrl'>URL</Label>
+                            <Input
+                                id='institutionalPolicyUrl'
+                                type='url'
+                                placeholder='https://'
+                                {...form.register('institutionalPolicyUrl')}
+                            />
+                            {institutionalPolicyUrlError ? (
+                                <p className='text-sm text-destructive'>
+                                    {institutionalPolicyUrlError.message}
+                                </p>
+                            ) : null}
+                        </div>
+                    </fieldset>
                     <Button type='submit' disabled={!form.formState.isValid}>
                         {mode === 'create' ? 'Continue to builder' : 'Save and open builder'}
                     </Button>

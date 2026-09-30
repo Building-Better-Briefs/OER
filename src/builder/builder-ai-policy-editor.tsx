@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextPlateEditor } from '@/components/rich-text-plate-editor';
 import { useBriefBuilder } from './brief-builder-context';
 import {
     AIAS_LEVELS,
     AIAS_POLICY,
+    hasAssessmentGuidance,
     type AiPolicyConfig,
     type AiPolicySource
 } from '@/lib/ai-policies';
 import type { InstitutionalAiPolicy } from '@/lib/institution-config';
-import { Loader2, Trash2, Upload } from 'lucide-react';
+import { OFFLINE_ROUTES } from '@/lib/offline-routes';
+import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type AiPolicyDocumentMetadata = {
     url: string;
@@ -45,9 +47,17 @@ export function BuilderAiPolicyEditor({
         refreshPublishAssets
     } = useBriefBuilder();
     const institutionalPolicy: InstitutionalAiPolicy = institutionalAiPolicy;
-    const [isUploading, setIsUploading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [uploadError, setUploadError] = useState('');
+    const [showGuidanceEditor, setShowGuidanceEditor] = useState(() =>
+        hasAssessmentGuidance(aiPolicy.assessmentGuidance)
+    );
+
+    useEffect(() => {
+        if (hasAssessmentGuidance(aiPolicy.assessmentGuidance)) {
+            setShowGuidanceEditor(true);
+        }
+    }, [aiPolicy.assessmentGuidance]);
 
     const setSource = useCallback(
         (source: AiPolicySource) => {
@@ -77,62 +87,6 @@ export function BuilderAiPolicyEditor({
         },
         [aiPolicy, onAiPolicyChange, setIsDirty]
     );
-
-    const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || builderMode === 'template' || !briefId) {
-            return;
-        }
-
-        setIsUploading(true);
-        setUploadError('');
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            const response = await fetch(
-                `/api/briefs/${briefId}/ai-policy-document`,
-                { method: 'POST', body: formData }
-            );
-            const responseType = response.headers.get('content-type') || '';
-            const data = responseType.includes('application/json')
-                ? await response.json()
-                : { error: await response.text() };
-
-            if (!response.ok) {
-                setUploadError(
-                    typeof data.error === 'string'
-                        ? data.error
-                        : 'Failed to upload file.'
-                );
-                return;
-            }
-
-            if (
-                data.aiPolicyDocument &&
-                typeof data.aiPolicyDocument.url === 'string' &&
-                typeof data.aiPolicyDocument.fileName === 'string'
-            ) {
-                onAiPolicyDocumentChange({
-                    url: data.aiPolicyDocument.url,
-                    fileName: data.aiPolicyDocument.fileName,
-                    sizeBytes: data.aiPolicyDocument.sizeBytes
-                });
-                onAiPolicyChange({
-                    ...aiPolicy,
-                    source: 'upload',
-                    aiasLevels: []
-                });
-                refreshPublishAssets();
-            }
-        } catch {
-            setUploadError('Failed to upload file. Please try again.');
-        } finally {
-            setIsUploading(false);
-            if (event.target) {
-                event.target.value = '';
-            }
-        }
-    };
 
     const handleDeleteDocument = async () => {
         if (builderMode === 'template' || !briefId) {
@@ -174,76 +128,46 @@ export function BuilderAiPolicyEditor({
         <div className='space-y-5 border bg-card p-4 sm:p-5'>
             <div className='space-y-3'>
                 <Label className='font-normal'>Assessment AI policy</Label>
-                <div className='flex flex-col gap-2 sm:flex-row sm:gap-4'>
-                    <label className='flex items-center gap-2 text-sm font-light cursor-pointer'>
-                        <input
-                            type='radio'
-                            name='ai-policy-source'
-                            checked={aiPolicy.source === 'upload'}
-                            onChange={() => setSource('upload')}
-                        />
-                        Upload a policy PDF
-                    </label>
-                    <label className='flex items-center gap-2 text-sm font-light cursor-pointer'>
-                        <input
-                            type='radio'
-                            name='ai-policy-source'
-                            checked={aiPolicy.source === 'aias'}
-                            onChange={() => void handleSwitchToAias()}
-                        />
-                        Use AI Assessment Scale (AIAS)
-                    </label>
-                </div>
+                {aiPolicy.source === 'upload' ? (
+                    <p className='text-sm font-light text-muted-foreground'>
+                        This brief uses a legacy uploaded policy PDF. Switch to
+                        the AI Assessment Scale (AIAS) to continue editing the
+                        policy here.
+                    </p>
+                ) : (
+                    <p className='text-sm font-light'>
+                        AI Assessment Scale (AIAS)
+                    </p>
+                )}
             </div>
 
-            {aiPolicy.source ? (
-                <>
             {aiPolicy.source === 'upload' ? (
-                <div className='space-y-3 rounded-none border border-dashed p-4'>
-                    <Label className='font-normal text-sm'>
-                        Policy document (PDF)
-                    </Label>
-                    <Input
-                        type='file'
-                        accept='.pdf,application/pdf'
-                        disabled={isUploading}
-                        onChange={(event) => void handleUpload(event)}
-                        className='font-light bg-muted/50 focus-visible:bg-muted/80 p-1'
-                    />
-                    {isUploading ? (
-                        <p className='text-xs font-light text-muted-foreground flex items-center gap-2'>
-                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                            Uploading…
+                <div className='space-y-3'>
+                    {aiPolicyDocument ? (
+                        <p className='text-sm font-light'>
+                            Uploaded file: {aiPolicyDocument.fileName}
                         </p>
                     ) : null}
-                    {aiPolicyDocument ? (
-                        <div className='flex flex-wrap items-center justify-between gap-2 text-sm font-light'>
-                            <span>{aiPolicyDocument.fileName}</span>
-                            <Button
-                                type='button'
-                                variant='ghost'
-                                size='sm'
-                                disabled={isDeleting}
-                                onClick={() => void handleDeleteDocument()}
-                                className='h-8 px-2 text-destructive hover:text-destructive'>
-                                {isDeleting ? (
-                                    <Loader2 className='h-4 w-4 animate-spin' />
-                                ) : (
-                                    <Trash2 className='h-4 w-4' />
-                                )}
-                                <span className='sr-only'>Remove file</span>
-                            </Button>
-                        </div>
-                    ) : (
-                        <p className='text-xs font-light text-muted-foreground flex items-center gap-1.5'>
-                            <Upload className='h-3.5 w-3.5' />
-                            PDF up to 25MB
-                        </p>
-                    )}
+                    <Button
+                        type='button'
+                        variant='secondary'
+                        size='sm'
+                        disabled={isDeleting}
+                        onClick={() => void handleSwitchToAias()}>
+                        {isDeleting ? (
+                            <>
+                                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                Switching…
+                            </>
+                        ) : (
+                            'Use AI Assessment Scale (AIAS)'
+                        )}
+                    </Button>
                 </div>
             ) : null}
 
-            {aiPolicy.source === 'aias' ? (
+            {aiPolicy.source !== 'upload' ? (
+                <>
                 <div className='space-y-3'>
                     <p className='text-sm font-light text-muted-foreground'>
                         Select one or more levels permitted for this assessment.
@@ -288,26 +212,36 @@ export function BuilderAiPolicyEditor({
                         ({AIAS_POLICY.license})
                     </p>
                 </div>
-            ) : null}
 
-            <div className='space-y-2'>
-                <Label className='font-normal'>
-                    Guidance for this assessment
-                </Label>
-                <div className='rounded-none border p-3'>
-                    <RichTextPlateEditor
-                        value={aiPolicy.assessmentGuidance}
-                        onChange={(value) => {
-                            onAiPolicyChange({
-                                ...aiPolicy,
-                                assessmentGuidance: value
-                            });
-                            setIsDirty(true);
-                        }}
-                        placeholder='When and how may students use AI in this specific assessment?'
-                    />
+            {showGuidanceEditor ? (
+                <div className='space-y-2'>
+                    <Label className='font-normal'>
+                        Guidance for this assessment
+                    </Label>
+                    <div className='rounded-none border p-3'>
+                        <RichTextPlateEditor
+                            value={aiPolicy.assessmentGuidance}
+                            onChange={(value) => {
+                                onAiPolicyChange({
+                                    ...aiPolicy,
+                                    assessmentGuidance: value
+                                });
+                                setIsDirty(true);
+                            }}
+                            placeholder='When and how may students use AI in this specific assessment?'
+                        />
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    className='font-light'
+                    onClick={() => setShowGuidanceEditor(true)}>
+                    Add guidance for this assessment
+                </Button>
+            )}
 
             {showUsageLogCheckbox ? (
                 <label className='flex items-start gap-3 rounded-none border p-3 cursor-pointer'>
@@ -335,15 +269,44 @@ export function BuilderAiPolicyEditor({
             ) : null}
 
             <div className='rounded-none bg-muted/40 p-3 text-xs font-light text-muted-foreground'>
-                The institutional policy link{' '}
-                <a
-                    href={institutionalPolicy.url}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='underline underline-offset-2 text-foreground'>
-                    {institutionalPolicy.label}
-                </a>{' '}
-                always appears in the brief footer.
+                {institutionalPolicy.label.trim() && institutionalPolicy.url.trim() ? (
+                    <>
+                        The institutional policy link{' '}
+                        <a
+                            href={institutionalPolicy.url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='underline underline-offset-2 text-foreground'>
+                            {institutionalPolicy.label}
+                        </a>{' '}
+                        appears in the brief footer. Change it under{' '}
+                        {builderMode === 'brief' && briefId ? (
+                            <Link
+                                to={OFFLINE_ROUTES.briefEdit(briefId)}
+                                className='underline underline-offset-2 text-foreground'>
+                                Edit details
+                            </Link>
+                        ) : (
+                            'Edit details'
+                        )}
+                        .
+                    </>
+                ) : (
+                    <>
+                        Optional institutional policy link in the brief footer.
+                        Set link text and URL under{' '}
+                        {builderMode === 'brief' && briefId ? (
+                            <Link
+                                to={OFFLINE_ROUTES.briefEdit(briefId)}
+                                className='underline underline-offset-2 text-foreground'>
+                                Edit details
+                            </Link>
+                        ) : (
+                            'Edit details'
+                        )}
+                        .
+                    </>
+                )}
             </div>
 
             {uploadError ? (

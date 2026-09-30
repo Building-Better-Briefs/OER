@@ -1,29 +1,16 @@
 import React, { useState, useEffect, useRef, Fragment, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import Link from '@/components/app-link';
-import {
-    ExternalLink,
-    Printer,
-    Volume2,
-    Settings2,
-    Loader2,
-    Download,
-    RotateCcw
-} from 'lucide-react';
+import { ExternalLink, Printer, Settings2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBriefViewerOptional } from '@/viewer-stubs/brief-viewer-context';
 import { useBriefBuilderOptional } from '@/builder/brief-builder-context';
 import {
     FONT_SIZE_SCALES,
-    readStoredAudioSettings,
-    type AudioSettings,
     type FontSize
 } from '@/viewer-stubs/brief-viewer-settings';
 import { parseContentWithLinks } from '@/lib/content-parser';
-import {
-    isBriefSectionEnabled,
-    isExampleFeedbackSectionEnabled
-} from '@/lib/brief-sections';
+import { isBriefSectionEnabled } from '@/lib/brief-sections';
 import { isProjectDetailSubsectionVisible } from '@/lib/project-detail-subsections';
 import {
     getVisibleCustomSubsections,
@@ -40,14 +27,6 @@ import {
     HoverCardContent,
     HoverCardTrigger
 } from '@/components/ui/hover-card';
-import { AiSettingsEnableMessage } from '@/components/ai-settings-enable-message';
-import { parseAiDisabledFromResponse } from '@/lib/ai-access';
-import {
-    AI_ACCENT_HOVER_CARD_CLASS,
-    AI_LISTEN_UNAVAILABLE_HINT,
-    AI_SETTINGS_ENABLE_HINT
-} from '@/lib/ai-powered-features';
-
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -103,7 +82,6 @@ import {
 import type { SubmissionFormDraftData } from '@/lib/student-brief-drafts';
 import {
     BRIEF_METADATA_SECTION_ID,
-    queueViewerFeatureEvent,
     useBriefSectionTracking
 } from '@/lib/brief-section-tracking';
 import { useBriefViewerFocusMode } from '@/hooks/use-brief-viewer-focus-mode';
@@ -238,11 +216,6 @@ interface BriefPreviewContentProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     content: any;
     sections: BriefSection[];
-    exampleFeedbackForm?: {
-        url: string;
-        fileName: string;
-        sizeBytes?: number;
-    } | null;
     aiPolicyDocument?: {
         url: string;
         fileName: string;
@@ -259,8 +232,6 @@ interface BriefPreviewContentProps {
     isInsightsPage?: boolean;
     /** When false, section/mouse engagement is not sent (e.g. lecturer preview). */
     trackEngagement?: boolean;
-    /** When omitted, falls back to builder context useAI. Viewer should pass explicitly. */
-    listenEnabled?: boolean;
     syncEnabled?: boolean;
     studentUserId?: number | null;
     initialChecklistDraft?: SyncedDraftEnvelope<{ items: Record<string, boolean> }> | null;
@@ -273,7 +244,6 @@ export function BriefPreviewContent({
     metadata,
     content,
     sections,
-    exampleFeedbackForm = null,
     aiPolicyDocument = null,
     templateKey,
     institutionalAiPolicy,
@@ -284,7 +254,6 @@ export function BriefPreviewContent({
     viewerSlug,
     isInsightsPage = false,
     trackEngagement = true,
-    listenEnabled,
     syncEnabled = false,
     studentUserId = null,
     initialChecklistDraft = null,
@@ -295,8 +264,6 @@ export function BriefPreviewContent({
         className === 'mobile-preview' || previewLayout === 'mobile';
     const isViewer = variant === 'viewer';
     const builderContext = useBriefBuilderOptional();
-    const resolvedListenEnabled =
-        listenEnabled ?? builderContext?.useAI ?? false;
     const viewerContext = useBriefViewerOptional();
     const focusModeEnabled = isViewer
         ? (viewerContext?.focusModeEnabled ?? false)
@@ -318,22 +285,7 @@ export function BriefPreviewContent({
                 .sort((a, b) => a.order - b.order),
         [sections]
     );
-    const displaySections = useMemo(() => {
-        if (!isViewer) {
-            return enabledSections;
-        }
-        return enabledSections.filter((section) => {
-            if (section.id !== 'example-feedback') {
-                return true;
-            }
-            return Boolean(content?.exampleFeedback || exampleFeedbackForm);
-        });
-    }, [
-        enabledSections,
-        isViewer,
-        content?.exampleFeedback,
-        exampleFeedbackForm
-    ]);
+    const displaySections = enabledSections;
     const enabledSectionIds = useMemo(
         () => displaySections.map((section) => section.id),
         [displaySections]
@@ -566,63 +518,9 @@ export function BriefPreviewContent({
     // State to track font size preference (builder preview only)
     const [localFontSize, setLocalFontSize] = useState<FontSize>('normal');
 
-    // State to track audio settings (builder preview only)
-    const [localAudioSettings, setLocalAudioSettings] =
-        useState<AudioSettings>(readStoredAudioSettings);
-
-    useEffect(() => {
-        if (isViewer || typeof window === 'undefined') {
-            return;
-        }
-
-        window.localStorage.setItem(
-            'audioSettings',
-            JSON.stringify(localAudioSettings)
-        );
-    }, [isViewer, localAudioSettings]);
-
     const fontSize = isViewer
         ? (viewerContext?.fontSize ?? 'normal')
         : localFontSize;
-    const audioSettings = isViewer
-        ? (viewerContext?.audioSettings ?? readStoredAudioSettings())
-        : localAudioSettings;
-
-    // State to track audio playback for each section
-    const [playingSections, setPlayingSections] = useState<Set<string>>(
-        new Set()
-    );
-    // State to track sections that are loading/generating audio
-    const [loadingSections, setLoadingSections] = useState<Set<string>>(
-        new Set()
-    );
-    // User has started listen at least once — show Restart + "Continue" instead of "Listen"
-    const [listenEngagedSections, setListenEngagedSections] = useState<
-        Set<string>
-    >(new Set());
-    const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
-    // Store audio URLs for cleanup
-    const audioUrls = useRef<Record<string, string>>({});
-
-    // Cleanup audio on unmount
-    useEffect(() => {
-        return () => {
-            // Stop all playing audio and clean up
-            Object.values(audioRefs.current).forEach((audio) => {
-                audio.pause();
-                audio.currentTime = 0;
-            });
-            // Revoke all audio URLs
-            Object.values(audioUrls.current).forEach((url) => {
-                URL.revokeObjectURL(url);
-            });
-            audioRefs.current = {};
-            audioUrls.current = {};
-            setPlayingSections(new Set());
-            setLoadingSections(new Set());
-            setListenEngagedSections(new Set());
-        };
-    }, []);
 
     const handleCheckboxChange = (itemKey: string) => {
         if (!draftsHydrated) {
@@ -720,11 +618,6 @@ export function BriefPreviewContent({
               hasSelfAssessmentRubric(content)
             : isSelfAssessmentLinkEnabled(content)
     );
-    const exampleFeedbackSectionEnabled =
-        isExampleFeedbackSectionEnabled(sections);
-    const effectiveExampleFeedbackForm = exampleFeedbackSectionEnabled
-        ? exampleFeedbackForm
-        : null;
     const resolvedInstitutionalPolicy =
         institutionalAiPolicy ??
         builderContext?.institutionalAiPolicy ?? { label: '', url: '' };
@@ -770,377 +663,6 @@ export function BriefPreviewContent({
         showAiUsageLogLink,
         showSelfAssessmentLink
     ]);
-
-    // Helper function to extract text from a section element
-    const extractSectionText = (sectionElement: HTMLElement | null): string => {
-        if (!sectionElement) return '';
-
-        // Clone the element to avoid modifying the original
-        const clone = sectionElement.cloneNode(true) as HTMLElement;
-
-        // Remove the button and other UI elements
-        const buttons = clone.querySelectorAll(
-            'button, .utility-bar, [class*="listen"]'
-        );
-        buttons.forEach((btn) => btn.remove());
-
-        // Get text content and clean it up
-        let text = clone.innerText || clone.textContent || '';
-
-        // Remove extra whitespace and normalize
-        text = text.replace(/\s+/g, ' ').trim();
-
-        return text;
-    };
-
-    // Handle text-to-speech for a section
-    const handleListenToSection = async (
-        sectionId: string,
-        sectionElement: HTMLElement | null
-    ) => {
-        const recordTtsListen = () => {
-            if (isViewer && trackEngagement && viewerSlug) {
-                queueViewerFeatureEvent(viewerSlug, {
-                    feature: 'tts_listen',
-                    detail: sectionId
-                });
-            }
-        };
-
-        // If already playing, stop it (but keep the audio cached)
-        if (playingSections.has(sectionId)) {
-            const audio = audioRefs.current[sectionId];
-            if (audio) {
-                audio.pause();
-                // Don't reset currentTime - keep it so we can resume from where we stopped
-            }
-            setPlayingSections((prev) => {
-                const next = new Set(prev);
-                next.delete(sectionId);
-                return next;
-            });
-            // Don't delete audioRefs.current[sectionId] - keep it cached
-            return;
-        }
-
-        // Check if we already have cached audio for this section
-        const cachedAudio = audioRefs.current[sectionId];
-        if (cachedAudio) {
-            // Resume playing cached audio
-            try {
-                setListenEngagedSections((prev) => new Set(prev).add(sectionId));
-                // Update playback speed in case settings changed
-                cachedAudio.playbackRate = parseFloat(audioSettings.speed);
-
-                // Reset to beginning if it has ended
-                if (cachedAudio.ended) {
-                    cachedAudio.currentTime = 0;
-                }
-
-                await cachedAudio.play();
-                setPlayingSections((prev) => new Set(prev).add(sectionId));
-                recordTtsListen();
-                return;
-            } catch (error) {
-                console.error('Error playing cached audio:', error);
-                // If cached audio fails, fall through to regenerate
-                delete audioRefs.current[sectionId];
-                if (audioUrls.current[sectionId]) {
-                    URL.revokeObjectURL(audioUrls.current[sectionId]);
-                    delete audioUrls.current[sectionId];
-                }
-            }
-        }
-
-        // Extract text from the section
-        const text = extractSectionText(sectionElement);
-
-        if (!text) {
-            console.warn('No text found in section');
-            return;
-        }
-
-        try {
-            setListenEngagedSections((prev) => new Set(prev).add(sectionId));
-            // Mark section as loading
-            setLoadingSections((prev) => new Set(prev).add(sectionId));
-
-            // Call the API to generate speech
-            const briefRef = isViewer
-                ? viewerSlug
-                    ? { briefSlug: viewerSlug }
-                    : briefId
-                      ? { briefId }
-                      : {}
-                : briefId
-                  ? { briefId }
-                  : {};
-
-            const response = await fetch('/api/speech', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    text,
-                    voice: audioSettings.voice,
-                    ...briefRef
-                })
-            });
-
-            if (!response.ok) {
-                const isAiDisabled = await parseAiDisabledFromResponse(response);
-                throw new Error(
-                    isAiDisabled
-                        ? isViewer
-                            ? AI_LISTEN_UNAVAILABLE_HINT
-                            : AI_SETTINGS_ENABLE_HINT
-                        : 'Failed to generate speech'
-                );
-            }
-
-            // Remove from loading, mark as playing
-            setLoadingSections((prev) => {
-                const next = new Set(prev);
-                next.delete(sectionId);
-                return next;
-            });
-            setPlayingSections((prev) => new Set(prev).add(sectionId));
-
-            const data = await response.json();
-
-            // Extract base64 string (remove data URL prefix if present)
-            let base64String = data.audio;
-            if (base64String.includes(',')) {
-                base64String = base64String.split(',')[1];
-            }
-
-            // Convert base64 to blob
-            const audioBlob = new Blob(
-                [Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0))],
-                { type: `audio/${data.format || 'mpeg'}` }
-            );
-
-            // Create audio URL and play
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-
-            // Apply playback speed setting
-            audio.playbackRate = parseFloat(audioSettings.speed);
-
-            // Store audio reference and URL (keep cached for reuse)
-            audioRefs.current[sectionId] = audio;
-            audioUrls.current[sectionId] = audioUrl;
-
-            // When audio ends, just mark as not playing (but keep cached)
-            audio.addEventListener('ended', () => {
-                setPlayingSections((prev) => {
-                    const next = new Set(prev);
-                    next.delete(sectionId);
-                    return next;
-                });
-                // Don't delete audioRefs or revoke URL - keep cached for reuse
-            });
-
-            audio.addEventListener('error', (e) => {
-                console.error('Audio playback error:', e);
-                // On error, clean up the cached audio
-                setPlayingSections((prev) => {
-                    const next = new Set(prev);
-                    next.delete(sectionId);
-                    return next;
-                });
-                delete audioRefs.current[sectionId];
-                if (audioUrls.current[sectionId]) {
-                    URL.revokeObjectURL(audioUrls.current[sectionId]);
-                    delete audioUrls.current[sectionId];
-                }
-            });
-
-            await audio.play();
-            recordTtsListen();
-        } catch (error) {
-            console.error('Error generating or playing speech:', error);
-            setLoadingSections((prev) => {
-                const next = new Set(prev);
-                next.delete(sectionId);
-                return next;
-            });
-            setPlayingSections((prev) => {
-                const next = new Set(prev);
-                next.delete(sectionId);
-                return next;
-            });
-            // Clean up on error
-            delete audioRefs.current[sectionId];
-            if (audioUrls.current[sectionId]) {
-                URL.revokeObjectURL(audioUrls.current[sectionId]);
-                delete audioUrls.current[sectionId];
-            }
-        }
-    };
-
-    const handleRestartListenSection = (sectionId: string) => {
-        const audio = audioRefs.current[sectionId];
-        if (!audio) return;
-        audio.pause();
-        audio.currentTime = 0;
-        audio.playbackRate = parseFloat(audioSettings.speed);
-        void audio
-            .play()
-            .then(() => {
-                setPlayingSections((prev) => new Set(prev).add(sectionId));
-            })
-            .catch((err) => {
-                console.error('Restart playback error:', err);
-            });
-    };
-
-    // Render the Listen button component
-    const renderListenButton = (
-        sectionId: string,
-        sectionRef?: React.RefObject<HTMLElement>
-    ) => {
-        if (!resolvedListenEnabled) {
-            const listenHint = isViewer
-                ? AI_LISTEN_UNAVAILABLE_HINT
-                : AI_SETTINGS_ENABLE_HINT;
-
-            return (
-                <HoverCard openDelay={0} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                        <span className='inline-flex cursor-not-allowed'>
-                            <Button
-                                type='button'
-                                variant='outline'
-                                size='sm'
-                                disabled
-                                className={cn(
-                                    'gap-1.5 opacity-60',
-                                    'max-sm:text-xs max-sm:px-1.5 max-sm:min-w-[70px]',
-                                    forceCompact &&
-                                        'text-xs px-1.5 min-w-[70px]'
-                                )}>
-                                <span className='hidden sm:inline'>
-                                    Listen to this section
-                                </span>
-                                <span className='sm:hidden'>Listen</span>
-                                <Volume2
-                                    className={cn(
-                                        'h-3.5 w-3.5',
-                                        'max-sm:h-2.5 max-sm:w-2.5',
-                                        forceCompact && 'h-2.5 w-2.5'
-                                    )}
-                                    aria-hidden
-                                />
-                            </Button>
-                        </span>
-                    </HoverCardTrigger>
-                    <HoverCardContent
-                        align='end'
-                        className={AI_ACCENT_HOVER_CARD_CLASS}>
-                        {isViewer ? (
-                            <p className='text-sm leading-snug'>
-                                {listenHint}
-                            </p>
-                        ) : (
-                            <AiSettingsEnableMessage layout='stacked' />
-                        )}
-                    </HoverCardContent>
-                </HoverCard>
-            );
-        }
-
-        const isPlaying = playingSections.has(sectionId);
-        const isLoading = loadingSections.has(sectionId);
-        const isEngaged = listenEngagedSections.has(sectionId);
-        const hasCachedAudio = Boolean(audioRefs.current[sectionId]);
-        const showRestart = isEngaged && !isLoading;
-
-        const primaryLabelDesktop = isLoading
-            ? 'Generating audio...'
-            : isPlaying
-                ? 'Stop listening'
-                : isEngaged
-                    ? 'Continue'
-                    : 'Listen to this section';
-        const primaryLabelMobile = isLoading
-            ? 'Loading...'
-            : isPlaying
-                ? 'Stop'
-                : isEngaged
-                    ? 'Continue'
-                    : 'Listen';
-
-        return (
-            <div className='flex flex-wrap items-center justify-end gap-1.5'>
-                {showRestart ? (
-                    <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        className={cn('gap-1 cursor-pointer', '', 'max-sm:text-xs max-sm:px-1.5', forceCompact && 'text-xs px-1.5')}
-                        aria-label='Restart audio from the beginning'
-                        disabled={!hasCachedAudio || isLoading}
-                        onClick={() => handleRestartListenSection(sectionId)}>
-                        <RotateCcw
-                            className={
-                                cn('h-3.5 w-3.5', 'max-sm:h-2.5 max-sm:w-2.5', forceCompact && 'h-2.5 w-2.5')
-                            }
-                            aria-hidden
-                        />
-                        <span
-                            className={
-                                'hidden sm:inline'
-                            }>
-                            Restart
-                        </span>
-                    </Button>
-                ) : null}
-                <Button
-                    variant='outline'
-                    size='sm'
-                    className={cn('gap-1.5 cursor-pointer', '', 'max-sm:text-xs max-sm:px-1.5 max-sm:min-w-[70px]', forceCompact && 'text-xs px-1.5 min-w-[70px]')}
-                    aria-pressed={isPlaying ? 'true' : 'false'}
-                    disabled={isLoading}
-                    onClick={() => {
-                        if (isLoading) return;
-                        const element =
-                            sectionRef?.current ||
-                            (typeof document !== 'undefined'
-                                ? (document.querySelector(
-                                    `[data-section-id="${sectionId}"]`
-                                ) as HTMLElement)
-                                : null);
-                        handleListenToSection(sectionId, element);
-                    }}>
-                    <span
-                        className={
-                            'hidden sm:inline'
-                        }>
-                        {primaryLabelDesktop}
-                    </span>
-                    <span
-                        className='sm:hidden'>
-                        {primaryLabelMobile}
-                    </span>
-                    <span aria-hidden='true'>
-                        {isLoading ? (
-                            <Loader2
-                                className={cn('animate-spin', 'h-3.5 w-3.5', 'max-sm:h-2.5 max-sm:w-2.5', forceCompact && 'h-2.5 w-2.5')}
-                            />
-                        ) : (
-                            <Volume2
-                                className={
-                                    cn('h-3.5 w-3.5', 'max-sm:h-2.5 max-sm:w-2.5', forceCompact && 'h-2.5 w-2.5')
-                                }
-                            />
-                        )}
-                    </span>
-                </Button>
-            </div>
-        );
-    };
 
     const renderSectionContent = (sectionId: string) => {
         if (!content) return null;
@@ -1268,10 +790,6 @@ export function BriefPreviewContent({
                                     </div>
                                     <div data-section-id='project-overview'>
                                         <div
-                                            className={cn('flex items-center justify-end border-b border-dotted border-foreground/15', 'p-0', 'max-sm:pb-1 max-sm:px-3 max-sm:pt-1', forceCompact && 'pb-1 px-3 pt-1')}>
-                                            {renderListenButton('project-overview')}
-                                        </div>
-                                        <div
                                             className={cn('font-light leading-relaxed', 'p-4 sm:pb-4 sm:px-4', 'max-sm:text-xs max-sm:pb-2 max-sm:px-3 max-sm:pt-2', forceCompact && 'text-xs pb-2 px-3 pt-2')}>
                                             {parseContentWithLinks(
                                                 content.subheadings[
@@ -1398,10 +916,6 @@ export function BriefPreviewContent({
                                         </div>
                                     </div>
                                     <div data-section-id='key-expectations'>
-                                        <div
-                                            className={cn('flex items-center justify-end border-b border-dotted border-foreground/15', 'p-0', 'max-sm:pb-1 max-sm:px-3 max-sm:pt-1', forceCompact && 'pb-1 px-3 pt-1')}>
-                                            {renderListenButton('key-expectations')}
-                                        </div>
                                         {content.keyExpectations.map(
                                             (
                                                 expectation: {
@@ -1471,10 +985,6 @@ export function BriefPreviewContent({
                                         </div>
                                     </div>
                                     <div data-section-id='deliverables'>
-                                        <div
-                                            className={cn('flex items-center justify-end border-b border-dotted border-foreground/15', 'p-0', 'max-sm:pb-1 max-sm:px-4', forceCompact && 'pb-1 px-4')}>
-                                            {renderListenButton('deliverables')}
-                                        </div>
                                         {content.deliverables.map(
                                             (
                                                 deliverable: {
@@ -1541,10 +1051,6 @@ export function BriefPreviewContent({
                                         </div>
                                     </div>
                                     <div data-section-id='resources'>
-                                        <div
-                                            className={cn('flex items-center justify-end border-b border-dotted border-foreground/15', 'p-0', 'max-sm:pb-1 max-sm:px-3 max-sm:pt-1', forceCompact && 'pb-1 px-3 pt-1')}>
-                                            {renderListenButton('resources')}
-                                        </div>
                                         {content.resources.map(
                                             (
                                                 resource: {
@@ -2242,24 +1748,18 @@ export function BriefPreviewContent({
                 }
                 return (
                     <div data-section-id='one-page-summary'>
-                        <div className='flex items-center justify-between'>
-                            <h2
-                                {...passthroughTitleProps(
-                                    'one-page-summary',
-                                    cn(
-                                        'font-extralight tracking-tight',
-                                        'text-3xl mb-6',
-                                        'max-sm:text-xl max-sm:mb-2',
-                                        forceCompact && 'text-xl mb-2'
-                                    )
-                                )}>
-                                One Page Summary
-                            </h2>
-                            <div
-                                className={cn('flex items-center justify-end', 'mb-3', 'max-sm:text-xs max-sm:mb-2', forceCompact && 'text-xs mb-2')}>
-                                {renderListenButton('one-page-summary')}
-                            </div>
-                        </div>
+                        <h2
+                            {...passthroughTitleProps(
+                                'one-page-summary',
+                                cn(
+                                    'font-extralight tracking-tight',
+                                    'text-3xl mb-6',
+                                    'max-sm:text-xl max-sm:mb-2',
+                                    forceCompact && 'text-xl mb-2'
+                                )
+                            )}>
+                            One Page Summary
+                        </h2>
 
                         <div className='grid grid-cols-1 md:grid-cols-[15rem_1fr] border'>
                             {content.onePageSummaryContent &&
@@ -2803,63 +2303,6 @@ export function BriefPreviewContent({
                     </>
                 );
 
-            case 'example-feedback':
-                if (!exampleFeedbackSectionEnabled) {
-                    return null;
-                }
-                if (!content.exampleFeedback && !effectiveExampleFeedbackForm) {
-                    if (isViewer) {
-                        return null;
-                    }
-                    return (
-                        <>
-                            <h2
-                                className={cn('font-extralight tracking-tight', 'text-3xl mb-6', 'max-sm:text-xl max-sm:mb-3', forceCompact && 'text-xl mb-3')}>
-                                Example Grading and Feedback Form
-                            </h2>
-                            <p
-                                className={cn('font-light text-muted-foreground', '', 'max-sm:text-xs', forceCompact && 'text-xs')}>
-                                Content not yet added for this section
-                            </p>
-                        </>
-                    );
-                }
-                return (
-                    <div data-section-id='example-feedback'>
-                        <div className='flex items-center justify-between'>
-                            <h2
-                                className={cn('font-extralight tracking-tight', 'text-3xl mb-6', 'max-sm:text-xl max-sm:mb-2', forceCompact && 'text-xl mb-2')}>
-                                Example Grading and Feedback Form
-                            </h2>
-                            <div
-                                className={cn('flex items-center justify-end', 'mb-3', 'max-sm:text-xs max-sm:mb-2', forceCompact && 'text-xs mb-2')}>
-                                {renderListenButton('example-feedback')}
-                            </div>
-                        </div>
-                        <div
-                            className={cn('font-light leading-relaxed', 'text-base', 'max-sm:text-xs', forceCompact && 'text-xs')}>
-                            {content.exampleFeedback
-                                ? parseContentWithLinks(content.exampleFeedback)
-                                : null}
-                            {effectiveExampleFeedbackForm ? (
-                                <div className='mt-4'>
-                                    <a
-                                        href={effectiveExampleFeedbackForm.url}
-                                        target='_blank'
-                                        rel='noopener noreferrer'
-                                        className='inline-flex items-center gap-2 rounded-none border px-3 py-2 hover:bg-muted/50 transition-colors'>
-                                        <Download className='h-4 w-4' />
-                                        <span className='underline underline-offset-2'>
-                                            Download Example Grading and
-                                            Feedback Form
-                                        </span>
-                                    </a>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                );
-
             case 'how-work-is-marked':
                 if (
                     !content.howWorkMarked ||
@@ -2880,16 +2323,10 @@ export function BriefPreviewContent({
                 }
                 return (
                     <div data-section-id='how-work-marked'>
-                        <div className='flex items-center justify-between'>
-                            <h2
-                                className={cn('font-extralight tracking-tight', 'text-3xl mb-6', 'max-sm:text-xl max-sm:mb-2', forceCompact && 'text-xl mb-2')}>
-                                How Work is Marked
-                            </h2>
-                            <div
-                                className={cn('flex items-center justify-end', 'mb-3', 'max-sm:text-xs max-sm:mb-2', forceCompact && 'text-xs mb-2')}>
-                                {renderListenButton('how-work-marked')}
-                            </div>
-                        </div>
+                        <h2
+                            className={cn('font-extralight tracking-tight', 'text-3xl mb-6', 'max-sm:text-xl max-sm:mb-2', forceCompact && 'text-xl mb-2')}>
+                            How Work is Marked
+                        </h2>
                         <div className='grid grid-cols-1 md:grid-cols-[15rem_1fr] border'>
                             {content.howWorkMarked.map(
                                 (
@@ -2979,15 +2416,6 @@ export function BriefPreviewContent({
                             Frequently Asked Questions
                         </h2>
                         <div className='border'>
-                            <div
-                                className={cn(
-                                    'flex items-center justify-end border-b border-dotted border-foreground/15',
-                                    'p-0',
-                                    'max-sm:pb-1 max-sm:px-3 max-sm:pt-1',
-                                    forceCompact && 'pb-1 px-3 pt-1'
-                                )}>
-                                {renderListenButton('faq')}
-                            </div>
                             {visibleFaqItems.map((item, idx) => (
                                 <details
                                     key={idx}
@@ -3333,83 +2761,6 @@ export function BriefPreviewContent({
                 </h1>
                 {!isViewer ? (
                     <div className='flex flex-wrap items-center justify-end gap-2'>
-                        {/* Audio Settings */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant='outline'
-                                    size='sm'
-                                    className={cn('gap-2', 'h-9', 'max-sm:text-xs max-sm:h-7 max-sm:px-2', forceCompact && 'text-xs h-7 px-2')}>
-                                    <Volume2
-                                        className={
-                                            cn('h-4 w-4', 'max-sm:h-3 max-sm:w-3', forceCompact && 'h-3 w-3')
-                                        }
-                                    />
-                                    <span
-                                        className={
-                                            'hidden sm:inline'
-                                        }>
-                                        Audio
-                                    </span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align='end'>
-                                <div className='px-2 py-1.5 text-sm font-semibold'>
-                                    Voice
-                                </div>
-                                <DropdownMenuRadioGroup
-                                    value={audioSettings.voice}
-                                    onValueChange={(value) =>
-                                        setLocalAudioSettings((prev) => ({
-                                            ...prev,
-                                            voice: value as AudioSettings['voice']
-                                        }))
-                                    }>
-                                    <DropdownMenuRadioItem value='alloy'>
-                                        Alloy
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='echo'>
-                                        Echo
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='fable'>
-                                        Fable
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='onyx'>
-                                        Onyx
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='nova'>
-                                        Nova
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='shimmer'>
-                                        Shimmer
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                                <div className='px-2 py-1.5 text-sm font-semibold mt-2'>
-                                    Speed
-                                </div>
-                                <DropdownMenuRadioGroup
-                                    value={audioSettings.speed}
-                                    onValueChange={(value) =>
-                                        setLocalAudioSettings((prev) => ({
-                                            ...prev,
-                                            speed: value as AudioSettings['speed']
-                                        }))
-                                    }>
-                                    <DropdownMenuRadioItem value='0.75'>
-                                        0.75x
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='1'>
-                                        1x
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='1.25'>
-                                        1.25x
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value='1.5'>
-                                        1.5x
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                         {/* Display Settings */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

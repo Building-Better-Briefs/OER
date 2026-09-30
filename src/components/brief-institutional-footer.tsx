@@ -16,6 +16,10 @@ export function BriefInstitutionalFooter({
     compact = false,
     actions
 }: BriefInstitutionalFooterProps) {
+    if (!policy.label.trim() || !policy.url.trim()) {
+        return null;
+    }
+
     return (
         <footer
             className={cn(

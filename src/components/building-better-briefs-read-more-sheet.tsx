@@ -2,10 +2,12 @@ import {
     Sheet,
     SheetContent,
     SheetDescription,
+    SheetFooter,
     SheetHeader,
     SheetTitle
 } from '@/components/ui/sheet';
 import { BuildingBetterBriefsSections } from '@/components/building-better-briefs-sections';
+import { BuildingBetterBriefsSlidesDownloadButton } from '@/components/building-better-briefs-slides-download-button';
 import { blocksForReadMore } from '@/content/building-better-briefs';
 
 type Props = {
@@ -35,6 +37,9 @@ export function BuildingBetterBriefsReadMoreSheet({
                         />
                     ) : null}
                 </div>
+                <SheetFooter className='shrink-0 border-t px-6 py-4 sm:justify-start'>
+                    <BuildingBetterBriefsSlidesDownloadButton />
+                </SheetFooter>
             </SheetContent>
         </Sheet>
     );

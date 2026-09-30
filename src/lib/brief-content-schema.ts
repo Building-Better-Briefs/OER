@@ -198,7 +198,7 @@ export const BriefContentSaveSchema = z
             .optional()
             .default([]),
         aiPolicy: aiPolicySchema.optional().default({
-            source: null,
+            source: 'aias',
             aiasLevels: [],
             usageLogEnabled: false,
             policyRationale: '',

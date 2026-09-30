@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
     getBrief,
+    resolveInstitutionalAiPolicy,
     toBuilderMetadata,
     writeBrief,
     type LocalBriefRecord
@@ -15,7 +15,6 @@ import {
 } from '@/lib/brief-template';
 import { normalizeBriefSections } from '@/lib/brief-sections';
 import { DEFAULT_BRIEF_TEMPLATE } from '@/lib/templates';
-import { getInstitutionAiPolicy } from '@/lib/institution-config';
 import {
     BriefBuilderProvider,
     type BriefSection
@@ -30,13 +29,16 @@ function mergeSections(
     saved: BriefSection[],
     templateSections: BriefSectionSnapshot[]
 ): BriefSection[] {
+    const templateIds = new Set(templateSections.map((s) => s.id));
     const savedById = new Map(saved.map((s) => [s.id, s]));
-    const mergedExisting = saved.map((section) => {
-        const t = templateSections.find((x) => x.id === section.id);
-        return t
-            ? { ...section, label: t.label, visibility: t.visibility }
-            : section;
-    });
+    const mergedExisting = saved
+        .filter((section) => templateIds.has(section.id))
+        .map((section) => {
+            const t = templateSections.find((x) => x.id === section.id);
+            return t
+                ? { ...section, label: t.label, visibility: t.visibility }
+                : section;
+        });
     const missing = templateSections
         .filter((s) => !savedById.has(s.id))
         .map((section, idx) => ({
@@ -156,7 +158,7 @@ export function BriefBuilderPage() {
             briefId={record.id}
             templateKey={layout.slug}
             layoutTemplate={layout}
-            institutionalAiPolicy={getInstitutionAiPolicy()}
+            institutionalAiPolicy={resolveInstitutionalAiPolicy(record.metadata)}
             initialSections={bootstrap.sections}
             initialContent={bootstrap.content}
             briefMetadata={toBuilderMetadata(record)}
@@ -166,24 +168,7 @@ export function BriefBuilderPage() {
             moduleRubricsEnabled={false}>
             <BuilderInteractionReset />
             <div className='brief-builder-page relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden bg-background'>
-                <header className='shrink-0 border-b px-4 py-4'>
-                    <div className='flex items-center justify-between'>
-                        <Button variant='ghost' size='sm' asChild>
-                            <Link to={OFFLINE_ROUTES.dashboard}>
-                                ← Dashboard
-                            </Link>
-                        </Button>
-                        <h1 className='text-xl font-normal tracking-tight'>
-                            Brief Builder
-                        </h1>
-                        <Button variant='outline' size='sm' asChild>
-                            <Link to={`/briefs/${record.id}/edit`}>
-                                Edit details
-                            </Link>
-                        </Button>
-                    </div>
-                </header>
-                <main className='min-h-0 flex-1 overflow-hidden'>
+                <main className='flex h-full min-h-0 flex-1 flex-col overflow-hidden'>
                     <BuilderPanelsLayout />
                 </main>
             </div>

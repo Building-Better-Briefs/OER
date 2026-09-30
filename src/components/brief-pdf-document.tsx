@@ -27,6 +27,7 @@ import {
 } from '@/lib/project-detail-block-order';
 import {
     getAiasLevel,
+    hasAssessmentGuidance,
     parseAiPolicy,
     AIAS_POLICY
 } from '@/lib/ai-policies';
@@ -1554,7 +1555,9 @@ const BriefPDFDocument = ({
                     aiPolicy.source === 'upload' && Boolean(aiPolicyDocument);
                 const hasAiasPolicy =
                     aiPolicy.source === 'aias' && selectedLevels.length > 0;
-                const hasGuidance = Boolean(aiPolicy.assessmentGuidance);
+                const hasGuidance = hasAssessmentGuidance(
+                    aiPolicy.assessmentGuidance
+                );
 
                 if (!hasUploadPolicy && !hasAiasPolicy && !hasGuidance) {
                     return (
@@ -1606,7 +1609,7 @@ const BriefPDFDocument = ({
                                 ))}
                             </View>
                         ) : null}
-                        {aiPolicy.assessmentGuidance ? (
+                        {hasGuidance ? (
                             <View
                                 style={{
                                     marginTop: 10,
@@ -1812,24 +1815,48 @@ const BriefPDFDocument = ({
                             ))}
                         </View>
                     )}
-                    <View
-                        style={{
-                            marginTop: PDF_SECTION_DIVIDER_GAP,
-                            borderTop: '1 solid rgba(0, 0, 0, 0.15)',
-                            paddingTop: PDF_SECTION_DIVIDER_GAP
-                        }}>
-                        <Text style={pdfStyles.textMuted}>
-                            Institutional policy:{' '}
-                            <Link src={institutionalPolicy.url}>
-                                {institutionalPolicy.label}
-                            </Link>
-                        </Text>
-                    </View>
+                    {institutionalPolicy.label.trim() &&
+                    institutionalPolicy.url.trim() ? (
+                        <View
+                            style={{
+                                marginTop: PDF_SECTION_DIVIDER_GAP,
+                                borderTop: '1 solid rgba(0, 0, 0, 0.15)',
+                                paddingTop: PDF_SECTION_DIVIDER_GAP
+                            }}>
+                            <Text style={pdfStyles.textMuted}>
+                                Institutional policy:{' '}
+                                <Link src={institutionalPolicy.url}>
+                                    {institutionalPolicy.label}
+                                </Link>
+                            </Text>
+                        </View>
+                    ) : null}
                 </View>
             </Page>
         </Document>
     );
 };
+
+export async function generateBriefPDFBlob(
+    metadata: BriefMetadata,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: any,
+    sections: BriefSection[],
+    institutionalAiPolicy: InstitutionalAiPolicy = { label: '', url: '' },
+    aiPolicyDocument: { url: string; fileName: string } | null = null
+): Promise<Blob> {
+    const doc = (
+        <BriefPDFDocument
+            metadata={metadata}
+            content={content}
+            sections={sections}
+            templateKey='default'
+            institutionalAiPolicy={institutionalAiPolicy}
+            aiPolicyDocument={aiPolicyDocument}
+        />
+    );
+    return pdf(doc).toBlob();
+}
 
 // Export function to generate PDF
 export async function generatePDF(
@@ -1841,25 +1868,15 @@ export async function generatePDF(
     institutionalAiPolicy: InstitutionalAiPolicy = { label: '', url: '' },
     aiPolicyDocument: { url: string; fileName: string } | null = null
 ): Promise<void> {
-    const doc = (
-        <BriefPDFDocument
-            metadata={metadata}
-            content={content}
-            sections={sections}
-            templateKey='default'
-            institutionalAiPolicy={institutionalAiPolicy}
-            aiPolicyDocument={aiPolicyDocument}
-        />
+    const blob = await generateBriefPDFBlob(
+        metadata,
+        content,
+        sections,
+        institutionalAiPolicy,
+        aiPolicyDocument
     );
-    const blob = await pdf(doc).toBlob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const { downloadBlob } = await import('@/lib/download-blob');
+    downloadBlob(blob, filename);
 }
 
 // PDF Document Component for Checklist Only

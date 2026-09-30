@@ -11,6 +11,13 @@ body {
   min-height: 100dvh;
 }
 
+#root {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .site-main {
   flex: 1;
   display: flex;

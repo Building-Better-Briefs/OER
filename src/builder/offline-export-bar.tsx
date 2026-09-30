@@ -11,31 +11,34 @@ export function OfflineExportBar() {
         sections,
         currentContent,
         briefMetadata,
-        selfAssessmentLinkEnabled
+        selfAssessmentLinkEnabled,
+        institutionalAiPolicy
     } = useBriefBuilder();
     const [busy, setBusy] = useState(false);
 
     const handleExport = async () => {
         setBusy(true);
         try {
-            const { generatePDF } = await import('@/components/brief-pdf-document');
+            const { downloadBriefBuilderExportZip } = await import(
+                '@/lib/brief-builder-pdf-export'
+            );
             const previewContent = {
                 ...(currentContent ?? {}),
                 selfAssessmentLinkEnabled
             };
-            const filename = `${briefMetadata.title || 'assessment-brief'}.pdf`;
-            await generatePDF(
-                briefMetadata,
-                previewContent,
+            const format = await downloadBriefBuilderExportZip({
+                metadata: briefMetadata,
+                content: previewContent,
                 sections,
-                filename,
-                { label: '', url: '' },
-                null
+                institutionalAiPolicy,
+                aiPolicyDocument: null
+            });
+            toast.success(
+                format === 'zip' ? 'ZIP downloaded' : 'PDF downloaded'
             );
-            toast.success('PDF downloaded');
         } catch (e) {
             console.error(e);
-            toast.error('Could not generate PDF');
+            toast.error('Could not generate export');
         } finally {
             setBusy(false);
         }

@@ -169,9 +169,9 @@ function StudentAssignmentLogPDFDocument({
     );
 }
 
-export async function generateStudentAssignmentLogPDF(
-    params: StudentAssignmentLogPDFDocumentProps & { filename: string }
-): Promise<void> {
+export async function renderStudentAssignmentLogPDFBlob(
+    params: StudentAssignmentLogPDFDocumentProps
+): Promise<Blob> {
     const doc = (
         <StudentAssignmentLogPDFDocument
             module={params.module}
@@ -186,13 +186,13 @@ export async function generateStudentAssignmentLogPDF(
             values={params.values}
         />
     );
-    const blob = await pdf(doc).toBlob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${params.filename}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return pdf(doc).toBlob();
+}
+
+export async function generateStudentAssignmentLogPDF(
+    params: StudentAssignmentLogPDFDocumentProps & { filename: string }
+): Promise<void> {
+    const blob = await renderStudentAssignmentLogPDFBlob(params);
+    const { downloadBlob } = await import('@/lib/download-blob');
+    downloadBlob(blob, `${params.filename}.pdf`);
 }

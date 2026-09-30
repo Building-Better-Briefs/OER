@@ -10,7 +10,7 @@ import { FileDown, Share, SquareArrowOutUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 import { ExportWebLinkDialog } from './export-weblink-dialog';
-import { generatePDF } from '@/components/brief-pdf-document';
+import { downloadBriefBuilderExportZip } from '@/lib/brief-builder-pdf-export';
 import { ScreenRecordingOverlay } from './screen-recording-overlay';
 
 /** Floating export controls (status + export menu). */
@@ -98,17 +98,15 @@ export function BuilderFloatingExportBar() {
     const handleExportPDF = async () => {
         setIsExportingPDF(true);
         try {
-            const filename = `${briefMetadata.title || 'assessment-brief'}.pdf`;
-            await generatePDF(
-                briefMetadata,
-                previewContent,
+            await downloadBriefBuilderExportZip({
+                metadata: briefMetadata,
+                content: previewContent,
                 sections,
-                filename,
                 institutionalAiPolicy,
                 aiPolicyDocument
-            );
+            });
         } catch (error) {
-            console.error('Error generating PDF:', error);
+            console.error('Error generating export:', error);
         } finally {
             setIsExportingPDF(false);
         }

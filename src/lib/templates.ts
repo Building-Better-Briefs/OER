@@ -81,12 +81,6 @@ export const templates = [
         ]
       },
       {
-        id: 'example-feedback',
-        label: 'Example Grading and Feedback Form',
-        visibility: 'optional',
-        exampleForm: 'example_grading_sheet.pdf'
-      },
-      {
         id: 'how-work-is-marked',
         label: 'How your work is marked',
         visibility: 'recommended',

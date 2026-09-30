@@ -222,12 +222,12 @@ export function BuilderPanelsLayout({
             orientation='horizontal'
             disableCursor
             onLayoutChange={handleLayoutChange}
-            className='border-none print:!block print:!w-full transition-all duration-300'>
+            className='h-full min-h-0 flex-1 border-none print:!block print:!w-full transition-all duration-300'>
             <ResizablePanel
                 defaultSize='50%'
                 minSize='40%'
                 id={PANEL_CONTENT}
-                className='min-h-0 min-w-0 print:hidden'>
+                className='h-full min-h-0 min-w-0 print:hidden'>
                 <BuilderLeftPanel />
             </ResizablePanel>
             <ResizableHandle
@@ -244,7 +244,7 @@ export function BuilderPanelsLayout({
                 defaultSize='50%'
                 minSize='0%'
                 maxSize='100%'
-                className='min-h-0 min-w-2xl print:!block print:!w-full print:!max-w-full print:!flex-[1_1_100%] print:!basis-full print:!min-w-full print:!grow print:!shrink-0 transition-all duration-300'>
+                className='h-full min-h-0 min-w-2xl print:!block print:!w-full print:!max-w-full print:!flex-[1_1_100%] print:!basis-full print:!min-w-full print:!grow print:!shrink-0 transition-all duration-300'>
                 <BuilderRightPanel />
             </ResizablePanel>
         </ResizablePanelGroup>

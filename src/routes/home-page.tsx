@@ -5,11 +5,7 @@ import { BuildingBetterBriefsSections } from '@/components/building-better-brief
 import { BuildingBetterBriefsReadMoreSheet } from '@/components/building-better-briefs-read-more-sheet';
 import { blocksForSummary } from '@/content/building-better-briefs';
 import { requestPersistentStorage } from '@/lib/brief-store';
-import {
-    BUILDING_BETTER_BRIEFS_PDF_FILENAME,
-    BUILDING_BETTER_BRIEFS_PDF_URL,
-    OFFLINE_ROUTES
-} from '@/lib/offline-routes';
+import { OFFLINE_ROUTES } from '@/lib/offline-routes';
 
 export function HomePage() {
     const [readMoreOpen, setReadMoreOpen] = useState(false);
@@ -25,13 +21,6 @@ export function HomePage() {
                         variant='outline'
                         onClick={() => setReadMoreOpen(true)}>
                         Read more
-                    </Button>
-                    <Button variant='outline' asChild>
-                        <a
-                            href={BUILDING_BETTER_BRIEFS_PDF_URL}
-                            download={BUILDING_BETTER_BRIEFS_PDF_FILENAME}>
-                            Download the PDF
-                        </a>
                     </Button>
                     <Button asChild>
                         <Link

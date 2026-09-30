@@ -19,10 +19,23 @@ import {
     parseDatetimeLocalField
 } from '@/lib/brief-form-dates';
 import type { BriefSection } from '@/builder/brief-builder-context';
+import {
+    getInstitutionAiPolicy,
+    type InstitutionalAiPolicy
+} from '@/lib/institution-config';
+import { isSampleBriefId } from '@/lib/sample-brief-ids';
 
 export const SCHEMA_VERSION = 1;
+export const INSTITUTIONAL_POLICY_LABEL_MAX = 200;
+export const INSTITUTIONAL_POLICY_URL_MAX = 2000;
 const DB_NAME = 'abb-offline';
 const DB_VERSION = 1;
+const META_SAMPLES_SEEDED_KEY = 'samplesSeeded';
+
+type SamplesSeededMeta = { version: 1; seeded: boolean };
+
+let samplesEnsureCacheHit = false;
+let samplesEnsurePromise: Promise<void> | null = null;
 
 export type BriefMetadataRecord = {
     programme: string;
@@ -32,6 +45,8 @@ export type BriefMetadataRecord = {
     startDate: string;
     submissionDate: string;
     individualGroup: string;
+    institutionalPolicyLabel?: string;
+    institutionalPolicyUrl?: string;
 };
 
 export type LocalBriefRecord = {
@@ -56,8 +71,36 @@ const metadataSchema = z.object({
     lecturer: z.string().min(1).max(2000),
     startDate: z.string().min(1),
     submissionDate: z.string().min(1),
-    individualGroup: z.string().min(1).max(500)
+    individualGroup: z.string().min(1).max(500),
+    institutionalPolicyLabel: z
+        .string()
+        .max(INSTITUTIONAL_POLICY_LABEL_MAX)
+        .optional()
+        .default(''),
+    institutionalPolicyUrl: z
+        .string()
+        .max(INSTITUTIONAL_POLICY_URL_MAX)
+        .optional()
+        .default('')
 });
+
+/**
+ * Per-brief institutional footer link when both label and URL are set;
+ * otherwise falls back to institution config (incomplete pairs use fallback).
+ */
+export function resolveInstitutionalAiPolicy(
+    metadata: Pick<
+        BriefMetadataRecord,
+        'institutionalPolicyLabel' | 'institutionalPolicyUrl'
+    >
+): InstitutionalAiPolicy {
+    const label = metadata.institutionalPolicyLabel?.trim() ?? '';
+    const url = metadata.institutionalPolicyUrl?.trim() ?? '';
+    if (label && url) {
+        return { label, url };
+    }
+    return getInstitutionAiPolicy();
+}
 
 interface AbbDb extends DBSchema {
     briefs: {
@@ -106,7 +149,10 @@ export function metadataToForm(record: LocalBriefRecord) {
         lecturer: record.metadata.lecturer,
         startDate: start ? formatDateField(start) : '',
         submissionDate: submission ? formatDatetimeLocalField(submission) : '',
-        individualGroup: record.metadata.individualGroup
+        individualGroup: record.metadata.individualGroup,
+        institutionalPolicyLabel:
+            record.metadata.institutionalPolicyLabel ?? '',
+        institutionalPolicyUrl: record.metadata.institutionalPolicyUrl ?? ''
     };
 }
 
@@ -118,6 +164,8 @@ export function metadataFromForm(input: {
     startDate: string;
     submissionDate: string;
     individualGroup: string;
+    institutionalPolicyLabel: string;
+    institutionalPolicyUrl: string;
 }): BriefMetadataRecord {
     const start = parseDateField(input.startDate);
     const submission = parseDatetimeLocalField(input.submissionDate);
@@ -131,7 +179,9 @@ export function metadataFromForm(input: {
         lecturer: input.lecturer.trim(),
         startDate: formatDateField(start),
         submissionDate: formatDatetimeLocalField(submission),
-        individualGroup: input.individualGroup.trim()
+        individualGroup: input.individualGroup.trim(),
+        institutionalPolicyLabel: input.institutionalPolicyLabel.trim(),
+        institutionalPolicyUrl: input.institutionalPolicyUrl.trim()
     });
 }
 
@@ -171,9 +221,7 @@ export async function createBrief(metadata: BriefMetadataRecord): Promise<LocalB
         links: []
     });
     const seeded = buildBriefContentsFromTemplate(parsed);
-    const sections = seeded.sections.map((s) =>
-        s.id === 'example-feedback' ? { ...s, enabled: false } : s
-    ) as BriefSection[];
+    const sections = seeded.sections as BriefSection[];
     const now = new Date().toISOString();
     const record: LocalBriefRecord = {
         schemaVersion: SCHEMA_VERSION,
@@ -235,6 +283,7 @@ export async function writeBrief(
 }
 
 export async function softDeleteBrief(id: string): Promise<void> {
+    if (isSampleBriefId(id)) return;
     const db = await getDb();
     const existing = await db.get('briefs', id);
     if (!existing) return;
@@ -306,4 +355,98 @@ export async function requestPersistentStorage(): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+/** @returns true when seeding is finished (success, skipped, or already done). */
+async function runEnsureSampleBriefs(): Promise<boolean> {
+    const db = await getDb();
+    const existingMeta = await db.get('meta', META_SAMPLES_SEEDED_KEY);
+    if (existingMeta) {
+        return true;
+    }
+
+    const { buildSampleBriefs } = await import('@/lib/sample-briefs');
+    let samples: LocalBriefRecord[];
+    try {
+        samples = buildSampleBriefs();
+    } catch (error) {
+        if (import.meta.env.DEV) {
+            console.error('[ensureSampleBriefs] build failed', error);
+        }
+        return false;
+    }
+
+    for (const record of samples) {
+        const sectionsParsed = briefSectionSnapshotsSchema.safeParse(
+            record.contents.sections
+        );
+        const contentParsed = parseBriefContentSave(record.contents.content);
+        if (!sectionsParsed.success || !contentParsed.success) {
+            if (import.meta.env.DEV) {
+                console.error(
+                    '[ensureSampleBriefs] validation failed',
+                    sectionsParsed.success ? null : sectionsParsed.error,
+                    contentParsed.success ? null : contentParsed.error
+                );
+            }
+            return false;
+        }
+    }
+
+    try {
+        const tx = db.transaction(['briefs', 'meta'], 'readwrite');
+        const metaStore = tx.objectStore('meta');
+        const briefsStore = tx.objectStore('briefs');
+
+        const metaInTx = await metaStore.get(META_SAMPLES_SEEDED_KEY);
+        if (metaInTx) {
+            await tx.done;
+            return true;
+        }
+
+        const all = await briefsStore.getAll();
+        const activeCount = all.filter((brief) => !brief.deletedAt).length;
+        const metaValue: SamplesSeededMeta =
+            activeCount === 0
+                ? { version: 1, seeded: true }
+                : { version: 1, seeded: false };
+
+        if (activeCount === 0) {
+            for (const record of samples) {
+                await briefsStore.put(record);
+            }
+        }
+        await metaStore.put(metaValue, META_SAMPLES_SEEDED_KEY);
+        await tx.done;
+        return true;
+    } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+            return false;
+        }
+        throw error;
+    }
+}
+
+/** Seeds built-in sample briefs once when the dashboard is empty (first visit). */
+export async function ensureSampleBriefs(): Promise<void> {
+    if (samplesEnsureCacheHit) {
+        return;
+    }
+    if (!samplesEnsurePromise) {
+        samplesEnsurePromise = runEnsureSampleBriefs()
+            .then((finished) => {
+                if (finished) {
+                    samplesEnsureCacheHit = true;
+                }
+            })
+            .catch((error) => {
+                if (import.meta.env.DEV) {
+                    console.error('[ensureSampleBriefs]', error);
+                }
+            })
+            .finally(() => {
+                samplesEnsurePromise = null;
+            });
+    }
+    await samplesEnsurePromise;
 }

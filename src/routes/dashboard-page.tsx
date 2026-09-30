@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { BuildingBetterBriefsReadMoreSheet } from '@/components/building-better-briefs-read-more-sheet';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
+} from '@/components/ui/dialog';
 import {
     duplicateBrief,
+    ensureSampleBriefs,
     exportAllBriefs,
     importBriefsFromFile,
     listBriefs,
@@ -10,6 +21,7 @@ import {
     softDeleteBrief,
     type LocalBriefRecord
 } from '@/lib/brief-store';
+import { isSampleBriefId } from '@/lib/sample-brief-ids';
 import { OFFLINE_ROUTES } from '@/lib/offline-routes';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -17,8 +29,12 @@ import { toast } from 'sonner';
 export function DashboardPage() {
     const [briefs, setBriefs] = useState<LocalBriefRecord[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deleteDialogBrief, setDeleteDialogBrief] =
+        useState<LocalBriefRecord | null>(null);
+    const [aboutOpen, setAboutOpen] = useState(false);
 
     const refresh = useCallback(async () => {
+        await ensureSampleBriefs();
         setBriefs(await listBriefs());
     }, []);
 
@@ -47,14 +63,25 @@ export function DashboardPage() {
         }
     };
 
+    const handleConfirmDelete = async () => {
+        if (!deleteDialogBrief) return;
+        await softDeleteBrief(deleteDialogBrief.id);
+        setDeleteDialogBrief(null);
+        await refresh();
+        toast.success('Brief deleted');
+    };
+
     return (
         <div className='dashboard-page flex flex-1 flex-col px-4 py-8 sm:px-6'>
             <header className='mx-auto mb-8 w-full max-w-[80rem]'>
                 <div className='mb-4'>
-                    <Button variant='ghost' size='sm' asChild>
-                        <Link to={OFFLINE_ROUTES.home}>
-                            About this project
-                        </Link>
+                    <Button
+                        variant='ghost'
+                        size='sm'
+                        type='button'
+                        onClick={() => setAboutOpen(true)}>
+                        <Info className='size-4' aria-hidden />
+                        About this project
                     </Button>
                 </div>
                 <h1 className='text-2xl font-extralight tracking-tight sm:text-3xl'>
@@ -102,12 +129,21 @@ export function DashboardPage() {
                     </p>
                 ) : (
                     <ul className='divide-y border'>
-                        {briefs.map((b) => (
+                        {briefs.map((b) => {
+                            const sampleBrief = isSampleBriefId(b.id);
+                            return (
                             <li
                                 key={b.id}
                                 className='flex flex-wrap items-center justify-between gap-4 px-4 py-4'>
                                 <div>
-                                    <p className='font-medium'>{b.metadata.title}</p>
+                                    <p className='font-medium'>
+                                        {b.metadata.title}
+                                        {sampleBrief ? (
+                                            <span className='ml-2 text-xs font-normal text-muted-foreground'>
+                                                Sample
+                                            </span>
+                                        ) : null}
+                                    </p>
                                     <p className='text-sm text-muted-foreground'>
                                         {b.metadata.module}
                                     </p>
@@ -140,26 +176,72 @@ export function DashboardPage() {
                                         Duplicate
                                     </Button>
                                     <Button
-                                        variant='ghost'
+                                        variant='outline'
                                         size='sm'
-                                        onClick={async () => {
-                                            if (
-                                                confirm(
-                                                    'Delete this brief? You can restore from backup if needed.'
-                                                )
-                                            ) {
-                                                await softDeleteBrief(b.id);
-                                                await refresh();
+                                        disabled={sampleBrief}
+                                        title={
+                                            sampleBrief
+                                                ? 'Sample briefs stay on your dashboard so you can explore the builder'
+                                                : undefined
+                                        }
+                                        aria-label={
+                                            sampleBrief
+                                                ? 'Delete unavailable for sample briefs'
+                                                : `Delete ${b.metadata.title}`
+                                        }
+                                        className='border-transparent text-destructive hover:border-destructive hover:bg-destructive hover:text-white disabled:pointer-events-auto disabled:opacity-50'
+                                        onClick={() => {
+                                            if (!sampleBrief) {
+                                                setDeleteDialogBrief(b);
                                             }
                                         }}>
                                         Delete
                                     </Button>
                                 </div>
                             </li>
-                        ))}
+                            );
+                        })}
                     </ul>
                 )}
             </main>
+
+            <Dialog
+                open={deleteDialogBrief !== null}
+                onOpenChange={(open) => {
+                    if (!open) setDeleteDialogBrief(null);
+                }}>
+                <DialogContent className='rounded-none sm:max-w-md'>
+                    <DialogHeader>
+                        <DialogTitle>Delete this brief?</DialogTitle>
+                        <DialogDescription>
+                            {deleteDialogBrief
+                                ? `“${deleteDialogBrief.metadata.title}” will be removed from this browser. You can restore it from a backup if needed.`
+                                : null}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            type='button'
+                            variant='outline'
+                            className='font-light rounded-none'
+                            onClick={() => setDeleteDialogBrief(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type='button'
+                            variant='destructive'
+                            className='font-light rounded-none'
+                            onClick={() => void handleConfirmDelete()}>
+                            Delete brief
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <BuildingBetterBriefsReadMoreSheet
+                open={aboutOpen}
+                onOpenChange={setAboutOpen}
+            />
         </div>
     );
 }

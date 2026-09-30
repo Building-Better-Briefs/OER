@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import NextLink from '@/components/app-link';
+import { Link as RouterLink } from 'react-router-dom';
+import { OFFLINE_ROUTES } from '@/lib/offline-routes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,7 +37,6 @@ import { BriefReviewNotice } from '@/components/brief-review-notice';
 import { CollaboratorsDialog } from '@/components/collaborators-dialog';
 import { AiFeatureDisabledHint } from '@/components/ai-feature-disabled-hint';
 import { getUserRubrics } from '@/app/actions';
-import { BuilderExampleFeedbackFormEditorLoader } from './builder-example-feedback-form-editor-loader';
 import {
     Plus,
     GripVertical,
@@ -140,6 +141,7 @@ import {
     buildRubricCriteriaFromLearningOutcomes,
     ensureRubricCriteriaIds
 } from '@/lib/rubric-types';
+import { getDeclarationDescription } from '@/lib/submission-declaration';
 
 function getInitialCustomState(initialContent: any) {
     return normalizeCustomSubsections(
@@ -177,12 +179,6 @@ type SchedulePhase = {
 function newSchedulePhaseSortIds(count: number): string[] {
     return Array.from({ length: count }, () => crypto.randomUUID());
 }
-
-const DECLARATION_DESCRIPTION =
-    'I hereby certify that the material, which I now submit for assessment on the programme of [INSERT_PROGRAMME], is entirely my own work and has not been taken from the work of others except to the extent of such work which has been cited and acknowledged within the text of my own work.';
-
-const getDeclarationDescription = (programme: string) =>
-    DECLARATION_DESCRIPTION.replaceAll('[INSERT_PROGRAMME]', programme);
 
 /**
  * Fixed locale, hour cycle, and timezone so SSR (Node) and the browser produce
@@ -1017,9 +1013,6 @@ export function BuilderLeftPanel() {
             gantt: false
         }
     );
-    const [requireNotebook, setRequireNotebook] = useState(
-        Boolean(initialContent?.requireNotebook)
-    );
     const [requireLogs, setRequireLogs] = useState(
         Boolean(initialContent?.requireLogs)
     );
@@ -1605,9 +1598,6 @@ export function BuilderLeftPanel() {
     const hideAssignmentSetting = (settingId: AssignmentSettingId) => {
         if (hiddenAssignmentSettings.includes(settingId)) return;
         setHiddenAssignmentSettings([...hiddenAssignmentSettings, settingId]);
-        if (settingId === 'require-notebook') {
-            setRequireNotebook(false);
-        }
         if (settingId === 'require-logs') {
             setRequireLogs(false);
         }
@@ -1783,7 +1773,7 @@ export function BuilderLeftPanel() {
             hiddenAssignmentSettings: hiddenAssignmentSettings.filter(
                 (id): id is AssignmentSettingId => isAssignmentSettingId(id)
             ),
-            requireNotebook: Boolean(requireNotebook),
+            requireNotebook: false,
             requireLogs: Boolean(requireLogs),
             requireAiLog: Boolean(requireAiLog),
             assignmentLogs,
@@ -1821,7 +1811,6 @@ export function BuilderLeftPanel() {
         schedulePhases,
         scheduleViews,
         hiddenAssignmentSettings,
-        requireNotebook,
         requireLogs,
         requireAiLog,
         assignmentLogs,
@@ -1931,7 +1920,6 @@ export function BuilderLeftPanel() {
                 table: Boolean(snapshot.scheduleViews?.table),
                 gantt: Boolean(snapshot.scheduleViews?.gantt)
             });
-            setRequireNotebook(Boolean(snapshot.requireNotebook));
             setRequireLogs(Boolean(snapshot.requireLogs));
             setRequireAiLog(
                 Boolean(
@@ -1991,9 +1979,7 @@ export function BuilderLeftPanel() {
                 aiPolicy.source === 'aias' &&
                 aiPolicy.aiasLevels.length === 0
             ) {
-                alert(
-                    'Select at least one AI Assessment Scale level, or choose a different policy source.'
-                );
+                alert('Select at least one AI Assessment Scale level.');
                 return false;
             }
 
@@ -2258,31 +2244,44 @@ export function BuilderLeftPanel() {
     return (
         <div className='relative flex h-full min-h-0 w-full flex-col bg-card'>
             <div
-                className='flex items-center justify-between gap-4 border-b bg-background p-4 px-6'
+                className='flex flex-wrap items-center justify-between gap-4 border-b bg-background p-4 px-6'
                 data-tour='brief-builder-content-toolbar'>
-                <div className='min-w-0'>
-                    <h2 className='text-xl font-normal tracking-tight'>
-                        Content{' '}
-                        <span className='text-muted-foreground text-sm'>
-                            <p className='text-sm font-light text-muted-foreground'>
-                                Build your assessment brief by adding content
-                            </p>
-                        </span>
-                    </h2>
+                <div className='flex min-w-0 flex-1 flex-wrap items-center gap-3'>
+                    {builderMode === 'brief' && briefId ? (
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-7 shrink-0 px-2 text-xs font-normal'
+                            asChild>
+                            <RouterLink to={OFFLINE_ROUTES.dashboard}>
+                                ← Dashboard
+                            </RouterLink>
+                        </Button>
+                    ) : null}
+                    <div className='min-w-0'>
+                        <h2 className='text-xl font-normal tracking-tight'>
+                            Brief Builder{' '}
+                            <span className='text-muted-foreground text-sm'>
+                                <p className='text-sm font-light text-muted-foreground'>
+                                    Build your assessment brief by adding content
+                                </p>
+                            </span>
+                        </h2>
+                    </div>
                 </div>
 
                 {/* Save button in header - shows when scrolled past Change Structure */}
                 {/* {showHeaderButton && ( */}
 
-                <div className='flex shrink-0 items-center gap-2'>
+                <div className='flex shrink-0 flex-wrap items-center gap-2'>
                     {builderMode === 'brief' && briefId ? (
                         <>
-                            <div className='border border-brand'>
+                            {/* <div className='border border-brand'>
                                 <CollaboratorsDialog
                                     briefId={parseInt(briefId, 10)}
                                     accessRole={accessRole}
                                 />
-                            </div>
+                            </div> */}
                             <div className='border border-brand'>
                                 <Button
                                     variant='outline'
@@ -2290,7 +2289,7 @@ export function BuilderLeftPanel() {
                                     size='sm'
                                     className='font-normal cursor-pointer '>
                                     <NextLink
-                                        href={`/briefs/${briefId}/edit`}
+                                        href={OFFLINE_ROUTES.briefEdit(briefId)}
                                         className='border'>
                                         <Pencil className=' h-4 w-4' />
                                         Edit Details
@@ -2642,143 +2641,6 @@ export function BuilderLeftPanel() {
                                                 </div>
                                             </dl>
                                             </div>
-                                            {(getVisibleAssignmentSettingIds(
-                                                hiddenAssignmentSettings
-                                            ).length > 0 ||
-                                                (builderMode === 'template' &&
-                                                    getHiddenAssignmentSettingIds(
-                                                        hiddenAssignmentSettings
-                                                    ).length > 0)) && (
-                                                <div className='space-y-3'>
-                                                    {getVisibleAssignmentSettingIds(
-                                                        hiddenAssignmentSettings
-                                                    ).length > 0 ? (
-                                                        <h4 className='font-extralight tracking-tight text-xl min-w-0'>
-                                                            Settings
-                                                        </h4>
-                                                    ) : null}
-                                                    <BuilderAssignmentSettings
-                                                        showRequireNotebook={isAssignmentSettingVisible(
-                                                            'require-notebook',
-                                                            hiddenAssignmentSettings
-                                                        )}
-                                                        requireNotebook={
-                                                            requireNotebook
-                                                        }
-                                                        onRequireNotebookChange={(
-                                                            checked
-                                                        ) => {
-                                                            setRequireNotebook(
-                                                                checked
-                                                            );
-                                                            setIsDirty(true);
-                                                        }}
-                                                        onHideRequireNotebook={
-                                                            builderMode ===
-                                                            'template'
-                                                                ? () =>
-                                                                      hideAssignmentSetting(
-                                                                          'require-notebook'
-                                                                      )
-                                                                : undefined
-                                                        }
-                                                        showRequireLogs={isAssignmentSettingVisible(
-                                                            'require-logs',
-                                                            hiddenAssignmentSettings
-                                                        )}
-                                                        requireLogs={requireLogs}
-                                                        assignmentLogs={
-                                                            assignmentLogs.length >
-                                                                0 || !requireLogs
-                                                                ? assignmentLogs
-                                                                : [
-                                                                      createDefaultAssignmentLogDefinition()
-                                                                  ]
-                                                        }
-                                                        onRequireLogsChange={(
-                                                            checked
-                                                        ) => {
-                                                            setRequireLogs(
-                                                                checked
-                                                            );
-                                                            if (
-                                                                checked &&
-                                                                assignmentLogs.length ===
-                                                                    0
-                                                            ) {
-                                                                setAssignmentLogs(
-                                                                    [
-                                                                        createDefaultAssignmentLogDefinition()
-                                                                    ]
-                                                                );
-                                                            }
-                                                            setIsDirty(true);
-                                                        }}
-                                                        onAssignmentLogsChange={(
-                                                            nextLogs
-                                                        ) => {
-                                                            setAssignmentLogs(
-                                                                nextLogs
-                                                            );
-                                                            setIsDirty(true);
-                                                        }}
-                                                        onHideRequireLogs={
-                                                            builderMode ===
-                                                            'template'
-                                                                ? () =>
-                                                                      hideAssignmentSetting(
-                                                                          'require-logs'
-                                                                      )
-                                                                : undefined
-                                                        }
-                                                        showRequireAiLog={isAssignmentSettingVisible(
-                                                            'require-ai-log',
-                                                            hiddenAssignmentSettings
-                                                        )}
-                                                        requireAiLog={
-                                                            requireAiLog
-                                                        }
-                                                        onRequireAiLogChange={(
-                                                            checked
-                                                        ) => {
-                                                            setRequireAiLog(
-                                                                checked
-                                                            );
-                                                            setAiPolicy(
-                                                                (current) => ({
-                                                                    ...current,
-                                                                    usageLogEnabled:
-                                                                        checked
-                                                                })
-                                                            );
-                                                            setIsDirty(true);
-                                                        }}
-                                                        onHideRequireAiLog={
-                                                            builderMode ===
-                                                            'template'
-                                                                ? () =>
-                                                                      hideAssignmentSetting(
-                                                                          'require-ai-log'
-                                                                      )
-                                                                : undefined
-                                                        }
-                                                    />
-                                                    {builderMode ===
-                                                        'template' &&
-                                                    getHiddenAssignmentSettingIds(
-                                                        hiddenAssignmentSettings
-                                                    ).length > 0 ? (
-                                                        <AssignmentSettingsRestoreBadges
-                                                            hiddenSettingIds={
-                                                                hiddenAssignmentSettings
-                                                            }
-                                                            onRestore={
-                                                                restoreAssignmentSetting
-                                                            }
-                                                        />
-                                                    ) : null}
-                                                </div>
-                                            )}
                                         </>
                                     )}
                                 <div className='flex items-start justify-between gap-4 flex-wrap'>
@@ -3868,6 +3730,106 @@ export function BuilderLeftPanel() {
                                         </DndContext>
                                     )}
 
+                                {section.id === 'project-details' &&
+                                    section.templateData?.subsections &&
+                                    (getVisibleAssignmentSettingIds(
+                                        hiddenAssignmentSettings
+                                    ).length > 0 ||
+                                        (builderMode === 'template' &&
+                                            getHiddenAssignmentSettingIds(
+                                                hiddenAssignmentSettings
+                                            ).length > 0)) && (
+                                        <div className='space-y-3'>
+                                            {getVisibleAssignmentSettingIds(
+                                                hiddenAssignmentSettings
+                                            ).length > 0 ? (
+                                                <h4 className='font-extralight tracking-tight text-xl min-w-0'>
+                                                    Logs
+                                                </h4>
+                                            ) : null}
+                                            <BuilderAssignmentSettings
+                                                showRequireLogs={isAssignmentSettingVisible(
+                                                    'require-logs',
+                                                    hiddenAssignmentSettings
+                                                )}
+                                                requireLogs={requireLogs}
+                                                assignmentLogs={
+                                                    assignmentLogs.length >
+                                                        0 || !requireLogs
+                                                        ? assignmentLogs
+                                                        : [
+                                                              createDefaultAssignmentLogDefinition()
+                                                          ]
+                                                }
+                                                onRequireLogsChange={(
+                                                    checked
+                                                ) => {
+                                                    setRequireLogs(checked);
+                                                    if (
+                                                        checked &&
+                                                        assignmentLogs.length ===
+                                                            0
+                                                    ) {
+                                                        setAssignmentLogs([
+                                                            createDefaultAssignmentLogDefinition()
+                                                        ]);
+                                                    }
+                                                    setIsDirty(true);
+                                                }}
+                                                onAssignmentLogsChange={(
+                                                    nextLogs
+                                                ) => {
+                                                    setAssignmentLogs(nextLogs);
+                                                    setIsDirty(true);
+                                                }}
+                                                onHideRequireLogs={
+                                                    builderMode === 'template'
+                                                        ? () =>
+                                                              hideAssignmentSetting(
+                                                                  'require-logs'
+                                                              )
+                                                        : undefined
+                                                }
+                                                showRequireAiLog={isAssignmentSettingVisible(
+                                                    'require-ai-log',
+                                                    hiddenAssignmentSettings
+                                                )}
+                                                requireAiLog={requireAiLog}
+                                                onRequireAiLogChange={(
+                                                    checked
+                                                ) => {
+                                                    setRequireAiLog(checked);
+                                                    setAiPolicy((current) => ({
+                                                        ...current,
+                                                        usageLogEnabled: checked
+                                                    }));
+                                                    setIsDirty(true);
+                                                }}
+                                                onHideRequireAiLog={
+                                                    builderMode === 'template'
+                                                        ? () =>
+                                                              hideAssignmentSetting(
+                                                                  'require-ai-log'
+                                                              )
+                                                        : undefined
+                                                }
+                                            />
+                                            {builderMode === 'template' &&
+                                            getHiddenAssignmentSettingIds(
+                                                hiddenAssignmentSettings
+                                            ).length > 0 ? (
+                                                <AssignmentSettingsRestoreBadges
+                                                    hiddenSettingIds={
+                                                        hiddenAssignmentSettings
+                                                    }
+                                                    onRestore={
+                                                        restoreAssignmentSetting
+                                                    }
+                                                />
+                                            ) : null}
+                                        </div>
+                                    )}
+
                                 {/* Rubric Section */}
                                 {section.id === 'rubric' && (
                                     <div className='space-y-4'>
@@ -4508,11 +4470,6 @@ export function BuilderLeftPanel() {
                                             </div>
                                         )}
                                     </div>
-                                )}
-
-                                {/* Example Feedback Form */}
-                                {section.id === 'example-feedback' && (
-                                    <BuilderExampleFeedbackFormEditorLoader />
                                 )}
 
                                 {/* Submission Form */}

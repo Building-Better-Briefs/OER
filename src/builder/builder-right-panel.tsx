@@ -8,8 +8,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 import { BriefPreviewContent } from '@/components/brief-preview-content';
-import { isExampleFeedbackSectionEnabled } from '@/lib/brief-sections';
-
 export function BuilderRightPanel() {
     const {
         previewMode,
@@ -35,11 +33,6 @@ export function BuilderRightPanel() {
         [currentContent, selfAssessmentLinkEnabled]
     );
 
-    const [exampleFeedbackForm, setExampleFeedbackForm] = useState<{
-        url: string;
-        fileName: string;
-        sizeBytes?: number;
-    } | null>(null);
     const [aiPolicyDocument, setAiPolicyDocument] = useState<{
         url: string;
         fileName: string;
@@ -47,7 +40,6 @@ export function BuilderRightPanel() {
     } | null>(null);
 
     useEffect(() => {
-        setExampleFeedbackForm(null);
         setAiPolicyDocument(null);
     }, [briefId, publishAssetsRefreshKey]);
 
@@ -68,7 +60,7 @@ export function BuilderRightPanel() {
                 </div>
 
                 <div className='flex items-center gap-2'>
-                    <Button
+                    {/* <Button
                         variant='ghost'
                         size='sm'
                         onClick={() => setPreviewMode('desktop')}
@@ -92,7 +84,7 @@ export function BuilderRightPanel() {
                         }`}>
                         <Smartphone className='h-4 w-4 mr-1.5' />
                         Mobile
-                    </Button>
+                    </Button> */}
                     <Button
                         type='button'
                         variant='default'
@@ -125,11 +117,6 @@ export function BuilderRightPanel() {
                         viewerSlug={viewerSlug}
                         templateKey={templateKey}
                         institutionalAiPolicy={institutionalAiPolicy}
-                        exampleFeedbackForm={
-                            isExampleFeedbackSectionEnabled(sections)
-                                ? exampleFeedbackForm
-                                : null
-                        }
                         aiPolicyDocument={aiPolicyDocument}
                         previewLayout={previewMode}
                         className={
