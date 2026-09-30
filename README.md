@@ -1,4 +1,4 @@
-# Building Better Briefs (Offline)
+# Building Better Briefs
 
 **A UDL Approach to Transparent and Inclusive Assessment**
 
