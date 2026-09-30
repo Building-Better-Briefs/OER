@@ -50,7 +50,7 @@ export default defineConfig({
                 'pwa/icon-512.png'
             ],
             manifest: {
-                name: 'Assessment Brief Builder (Offline)',
+                name: 'Assessment Brief Builder',
                 short_name: 'Brief Builder',
                 description: 'Create assessment briefs offline',
                 theme_color: '#ffffff',

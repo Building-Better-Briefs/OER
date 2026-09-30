@@ -1,7 +1,7 @@
 export type InstitutionalAiPolicy = { label: string; url: string };
 export const institutionConfig = {
   name: 'IADT',
-  appName: 'Assessment Brief Builder (Offline)',
+  appName: 'Assessment Brief Builder',
   logoUrlLight: '/logo-light.svg',
   logoUrlDark: '/logo-dark.svg',
   aiPolicyLabel: '',
